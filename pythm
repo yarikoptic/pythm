@@ -1,0 +1,19 @@
+#!/usr/bin/python
+import sys
+import os
+
+try:
+    BASE_DIR="src/"
+    sys.path.append(os.path.join(os.getcwd(), BASE_DIR))
+    import pythm
+    print "Using relative directory structure"
+except ImportError, e:
+    from pythm import Pythm
+    BASE_DIR="%s/share/pympd" % ("PREFIX")
+
+def main():
+	instance = Pythm()
+	instance.main()
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=0.06.2
+Type=Application
+Encoding=UTF-8
+Name=pythm
+Comment=pyGTK+ Frontend for MPD and mplayer
+TryExec=pympd
+Exec=pythm
+Icon=
+Categories=Application;AudioVideo;Audio;Player;
+Terminal=false
