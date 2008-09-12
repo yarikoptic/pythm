@@ -5,6 +5,7 @@ import gtk
 from pagelist import *
 from pageplay import *
 from pagebrowse import *
+from lang import _
 
 class PythmGtk:
 
@@ -25,13 +26,12 @@ class PythmGtk:
         # create a new window
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.resize(480,640)
+        self.window.set_title(_("pythm"))
 
         self.window.connect("delete_event", self.delete_event)
         self.window.connect("destroy", self.destroy)
         
         self.backend = backend
-    
-    
         #self.button = gtk.Button("Hello World")
         #self.button.connect("clicked", self.hello, None)
         #self.button.connect_object("clicked", gtk.Widget.destroy, self.window)
@@ -50,5 +50,6 @@ class PythmGtk:
         # and the window
         self.window.show_all()
         
-        self.backend.add("/home/ugh/music/ogg/amon amarth/versus the world/05 - amon amarth - across the rainbow bridge.ogg")
+        #initialize
+        self.backend.populate()
         

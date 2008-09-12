@@ -1,15 +1,15 @@
 import pygtk
 pygtk.require('2.0')
 import gtk
-
 from page import Page
+from lang import _
 
 class PageBrowse(Page):
     def __init__(self,backend):
-        self.caption1 = "add"
-        self.caption2 = "up"
-        self.caption3 = ""
-        self.model = gtk.ListStore(str,str,bool)
+        self.caption1 = _("add")
+        self.caption2 = _("up")
+        self.caption3 = "."
+        self.model = gtk.ListStore(object,str,bool)
         Page.__init__(self,backend)
         self.loadList()
         
@@ -17,20 +17,19 @@ class PageBrowse(Page):
         br = self.backend.browse(path)
         self.model.clear()
         for f in br:
-            self.model.append([f.id,f.caption,f.isDir])
+            self.model.append([f,f.caption,f.isDir])
             
     
     def row_activated(self, tv, path, view_column):
         iter = self.model.get_iter(path)
         if iter is not None:
-            val = self.model.get_value(iter,0)
-            isDir = self.model.get_value(iter,2)
-            if isDir:
-                self.loadList(val)
+            entry = self.model.get_value(iter,0)
+            if entry.isDir:
+                self.loadList(entry.id)
             else:
-                self.backend.add(val)
+                self.backend.add(entry.id)
                 
-            print val
+            print entry.id
         
         
     def content(self):

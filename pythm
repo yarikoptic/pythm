@@ -2,18 +2,17 @@
 import sys
 import os
 
-try:
-    BASE_DIR="src/"
-    sys.path.append(os.path.join(os.getcwd(), BASE_DIR))
-    import pythm
-    print "Using relative directory structure"
-except ImportError, e:
-    from pythm import Pythm
-    BASE_DIR="%s/share/pympd" % ("PREFIX")
-
 def main():
-	instance = Pythm()
-	instance.main()
+    try:
+        #check if in development dir:
+        devdir = os.path.join(os.getcwd(), "src")
+        if os.path.exists(devdir):
+            sys.path.append(devdir)
+    
+        from pythm import startPythm
+        startPythm()
+    except NameError,e:
+        print "could not find pythm: "+str(e)
 
 if __name__ == "__main__":
     main()

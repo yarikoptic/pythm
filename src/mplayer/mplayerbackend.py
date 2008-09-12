@@ -1,12 +1,42 @@
-from backend import PythmBackend,PlaylistEntry,BrowserEntry,browserEntryCompare,Signals
+from backend import *
 import os
 import re
+from mplayer import MPlayer
+
+from threading import Thread
+from pythm import is_numeric
+import time
+
+
+
+class StateChecker(Thread):
+    """
+    checks the backend/playing state
+    """
+    def __init__ (self,backend):
+        Thread.__init__(self)
+        self.backend = backend
+        self.running=True
+        self.stopped = False
+        
+    def run(self):
+        while self.running == True:
+            #thread logic here
+            #print "check"
+            time.sleep(1)
+            self.backend.checkState()
+            
+        self.stopped=True
+
 
 class MplayerBackend(PythmBackend):
-    """Example backend"""
+    """
+        Backend for mplayer control
+        Provides basic Player usage and file browsing.
+    """
     
-    def __init__(self):
-        PythmBackend.__init__(self)
+    def __init__(self,evthandler):
+        PythmBackend.__init__(self,evthandler)
         self.playlist = []
         
         self.endings = ["ogg","mp3"]
@@ -15,29 +45,49 @@ class MplayerBackend(PythmBackend):
         self.filematchers.append("(?P<artist>.*)-(?P<title>.*)\..*") 
         self.filematchers.append("(?P<title>.*)\..*")
         
-        pass
-    
-    def get_pl(self):
-        """returns a list of PlaylistEntries in the current List"""
-        return self.playlist
-    
-    def get_volume(self):
-        """volume state"""
-        return Volume(0,100,25);
+        MPlayer.populate()
+        self.mplayer = MPlayer()
+        self.statecheck = StateChecker(self)
+        self.statecheck.start()
+        self.currentSong = None
+        self.random = False
+        self.repeat = False
+        self.state = State.STOPPED
     
     def set_volume(self,newVol):
         """sets new volume"""
-        pass
+        self.mplayer.volume(newVol,1)
+        self.emit(Signals.VOLUME_CHANGED,newVol)
     
-    def get_state(self):
-        """state of the player"""
-        state = State()
-        state.pos = 30;
-        state.pleid = 1
+    def set_random(self,rand):
+        self.random = rand
+        self.emit(Signals.RANDOM_CHANGED,rand)
+        
+    def set_repeat(self,rept):
+        self.repeat = rept
+        self.emit(Signals.REPEAT_CHANGED,rept)
+    
     
     def play(self, pleid=None):
         """Plays a song from the playlist or starts playing of pleid=None"""
-        pass
+        if self.state == State.STOPPED or pleid is not None:        
+            entry = self.playlist[0]
+            self.mplayer.loadfile(entry.id)
+            entry.length = float(self.mplayer.get_time_length())
+            #entry.artist = self.mplayer.get_meta_artist()
+            #entry.title = self.mplayer.get_meta_title()
+            self.currentSong = entry
+            self.emit(Signals.SONG_CHANGED,entry)
+        elif self.state == State.PAUSED:
+            #toggle pause off
+            self.mplayer.pause()
+        
+        self.set_state(State.PLAYING)
+    
+    
+    def set_state(self,newState):
+        self.state = newState
+        self.emit(Signals.STATE_CHANGED,newState)
     
     def next(self):
         """Next song in playlist"""
@@ -53,7 +103,10 @@ class MplayerBackend(PythmBackend):
     
     def stop(self):
         """stops playback"""
-        pass
+        if self.state != State.STOPPED:
+            self.mplayer.stop()
+            self.set_state(State.STOPPED)
+
     
     def browse(self,parentDir=None):
         """
@@ -98,9 +151,9 @@ class MplayerBackend(PythmBackend):
         
         fn = os.path.basename(beId)
         tpl = self.getData(fn)
-        entry = PlaylistEntry(1,tpl[0],tpl[1],0)
+        entry = PlaylistEntry(beId,tpl[0],tpl[1],0)
         self.playlist.append(entry)
-        self.emit(Signals.PLAYLIST_CHANGED)
+        self.emit(Signals.PL_CHANGED,self.playlist)
         
     def getData(self,file):
         """
@@ -127,7 +180,25 @@ class MplayerBackend(PythmBackend):
         pass
     
     def shutdown(self):
-        pass
+        self.statecheck.running = False
+        while not self.statecheck.stopped:
+            time.sleep(0.1)
+        self.mplayer.quit()
+            
+    def checkState(self):
+        """
+            gets called from StateChecker Thread.
+        """
+        pos = self.mplayer.get_time_pos()
+        #print "Pos: " + str(pos)
+        if is_numeric(pos):
+            self.emit(Signals.POS_CHANGED, pos)
+            
+    def populate(self):
+        """populates the player"""
+        self.set_volume(50)
+        self.set_repeat(False)        
+        self.set_random(False)
 
         
         

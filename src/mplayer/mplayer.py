@@ -2,6 +2,8 @@ import os
 import select
 import subprocess
 
+from threading import Lock
+
 #http://code.activestate.com/recipes/542195/
 
 class MPlayer(object):
@@ -38,11 +40,14 @@ class MPlayer(object):
                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=1)
         
         self._readlines()
+        self.lock = Lock()
 
     def _readlines(self):
         ret = []
         while any(select.select([self._mplayer.stdout.fileno()], [], [], 0.6)):
-            ret.append( self._mplayer.stdout.readline() )
+            tmp = self._mplayer.stdout.readline()
+            #print "MPLAYER: " + tmp
+            ret.append(tmp)
         return ret
 
     def command(self, name, *args):
@@ -53,10 +58,18 @@ class MPlayer(object):
                 ' ' if args else '',
                 ' '.join(repr(a) for a in args)
                 )
-        self._mplayer.stdin.write(cmd)
-        if name == 'quit':
-            return
-        return self._readlines()
+        ret = None
+        
+        self.lock.acquire()        
+        try:
+            self._mplayer.stdin.write(cmd)
+            if name != 'quit':
+                ret = self._readlines()
+        except:
+            pass
+        
+        self.lock.release()
+        return ret
 
     @classmethod
     def populate(kls):

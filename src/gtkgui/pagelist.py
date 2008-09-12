@@ -10,16 +10,14 @@ class PageList(Page):
         self.caption1 = "up"
         self.caption2 = "down"
         self.caption3 = "del"
-        self.model = gtk.ListStore(int,str,str,int)
+        self.model = gtk.ListStore(object,str,str,int)
         Page.__init__(self,backend)
-        self.backend.connect(Signals.PLAYLIST_CHANGED,self.loadList)
-        self.loadList()
+        self.backend.connect(Signals.PL_CHANGED,self.loadList)
         
-    def loadList(self):
-        pl = self.backend.get_pl()
+    def loadList(self,pl):
         self.model.clear()
         for p in pl:
-            self.model.append([int(p.id),p.artist,p.title,int(p.length)])
+            self.model.append([p.id,p.artist,p.title,int(p.length)])
                 
         
     def content(self):
