@@ -1,11 +1,13 @@
 import pygtk
 pygtk.require('2.0')
 import gtk
+import gobject
 
 from pagelist import *
 from pageplay import *
 from pagebrowse import *
 from lang import _
+
 
 class PythmGtk:
 
@@ -19,11 +21,12 @@ class PythmGtk:
 
     def destroy(self, widget, data=None):
         print "destroy signal occurred"
-        gtk.main_quit()
         self.backend.shutdown()
+        gtk.main_quit()
 
-    def __init__(self,backend):
+    def __init__(self,backendClass):
         # create a new window
+        gtk.gdk.threads_init()
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.resize(480,640)
         self.window.set_title(_("pythm"))
@@ -31,12 +34,13 @@ class PythmGtk:
         self.window.connect("delete_event", self.delete_event)
         self.window.connect("destroy", self.destroy)
         
-        self.backend = backend
+        self.backend = backendClass(self.gtkcallback)
         #self.button = gtk.Button("Hello World")
         #self.button.connect("clicked", self.hello, None)
         #self.button.connect_object("clicked", gtk.Widget.destroy, self.window)
         self.vbox = gtk.VBox()
         self.tabs = gtk.Notebook()
+        self.tabs.set_property("homogeneous",True)
         self.tabs.append_page(PagePlay(self.backend),gtk.Label("Play"))
         self.tabs.append_page(PageList(self.backend),gtk.Label("List"))
         self.tabs.append_page(PageBrowse(self.backend),gtk.Label("Browse"))
@@ -52,4 +56,13 @@ class PythmGtk:
         
         #initialize
         self.backend.populate()
+        
+        gtk.main()
+
+
+    def gtkcallback(self,func,*args):
+        """
+        callback method for signals of backend (out of gtk-thread)
+        """
+        gobject.idle_add(func,*args)
         

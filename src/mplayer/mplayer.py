@@ -1,7 +1,7 @@
 import os
 import select
 import subprocess
-
+import time
 from threading import Lock
 
 #http://code.activestate.com/recipes/542195/
@@ -39,93 +39,72 @@ class MPlayer(object):
             self._mplayer = subprocess.Popen(args,executable=self.exe_name,
                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=1)
         
-        self._readlines()
         self.lock = Lock()
 
-    def _readlines(self):
-        ret = []
-        while any(select.select([self._mplayer.stdout.fileno()], [], [], 0.6)):
-            tmp = self._mplayer.stdout.readline()
-            #print "MPLAYER: " + tmp
-            ret.append(tmp)
-        return ret
-
-    def command(self, name, *args):
-        """ Very basic interface [see populate()]
-        Sends command 'name' to process, with given args
+    def command(self,cmd,*args):
+        """
+        a command that does not read anything
+        """
+        return self._cmd(cmd,None,False,*args)
+    
+    def arraycmd(self,name,key,*args):
+        """
+        array reading of mplayers output
+        """
+        return self._cmd(name,key,True,*args)
+            
+    def cmd(self,name,key,*args):
+        """
+        single line reading with key
+        """
+        return self._cmd(name,key,False,*args)
+    
+    def quit(self):
+        self.command("quit",0)
+        self._mplayer.wait()
+    
+    def _cmd(self,name,key,readall,*args):
+        """
+        key is the beginning of a line that the command waits for.
+        if it is None, the read from mplayers stdout will be omitted.
+        if readall is true, all is read until a line begins with key.
         """
         cmd = '%s%s%s\n'%(name,
                 ' ' if args else '',
                 ' '.join(repr(a) for a in args)
                 )
-        ret = None
+        if readall:
+            ret = []
+        else:
+            ret = None
         
-        self.lock.acquire()        
+        self.lock.acquire()  
+        i = 0      
         try:
+            #print "CMD: " + str(cmd)
             self._mplayer.stdin.write(cmd)
-            if name != 'quit':
-                ret = self._readlines()
-        except:
+            if key != None:
+                while any(select.select([self._mplayer.stdout.fileno()], [], [], 1.5)):
+                    tmp = self._mplayer.stdout.readline()
+                    #print "MPLAYER:" + tmp.strip()
+                    if readall:
+                        ret.append(tmp)
+                        if tmp.startswith(key):
+                            break
+                    else:
+                        
+                        if tmp.startswith(key):
+                            val = tmp.split('=', 1)[1].rstrip()
+                            try:
+                                ret = eval(val)
+                            except:
+                                ret =  val
+                            break
+        except Exception,e:
+            print e
             pass
         
+        
         self.lock.release()
+
         return ret
-
-    @classmethod
-    def populate(kls):
-        """ Populates this class by introspecting mplayer executable """
-        mplayer = subprocess.Popen([kls.exe_name, '-input', 'cmdlist'],
-                stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-
-        def args_pprint(txt):
-            lc = txt.lower()
-            if lc[0] == '[':
-                return '%s=None'%lc[1:-1]
-            return lc
-
-        while True:
-            line = mplayer.stdout.readline()
-            if not line:
-                break
-            if line[0].isupper():
-                continue
-            args = line.split()
-            cmd_name = args.pop(0)
-            arguments = ', '.join([args_pprint(a) for a in args])
-            func_str = '''def _populated_fn(self, *args):
-            """%(doc)s"""
-            if not (%(minargc)d <= len(args) <= %(argc)d):
-                raise TypeError('%(name)s takes %(argc)d arguments (%%d given)'%%len(args))
-            ret = self.command('%(name)s', *args)
-            if not ret:
-                return None
-            for r in ret:
-                if r.startswith('ANS'):
-                    val = r.split('=', 1)[1].rstrip()
-                    try:
-                        return eval(val)
-                    except:
-                        return val
-            return ret'''%dict(
-                    doc = '%s(%s)'%(cmd_name, arguments),
-                    minargc = len([a for a in args if a[0] != '[']),
-                    argc = len(args),
-                    name = cmd_name,
-                    )
-            exec(func_str)
-
-            setattr(MPlayer, cmd_name, _populated_fn)
-
-if __name__ == '__main__':
-    import sys
-    MPlayer.populate()
-    try:
-        mp = MPlayer()
-        import readline
-        readline.parse_and_bind('tab: complete')
-        import rlcompleter
-        mp.loadfile(sys.argv[1])
-        raw_input('Run this with python -i to get interactive shell.'
-                '\nPress any key to quit.')
-    finally:
-        mp.quit()
