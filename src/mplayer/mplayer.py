@@ -84,7 +84,7 @@ class MPlayer(object):
             #print "CMD: " + str(cmd)
             self._mplayer.stdin.write(cmd)
             if key != None:
-                while any(select.select([self._mplayer.stdout.fileno()], [], [], 1.5)):
+                while any(select.select([self._mplayer.stdout.fileno()], [], [], 20)):
                     tmp = self._mplayer.stdout.readline()
                     #print "MPLAYER:" + tmp.strip()
                     if readall:
