@@ -1,0 +1,19 @@
+Pythm 0.4 Readme
+
+to try pythm out, start the "pythm" script in the base directory.
+
+Requirements:
+- pygtk
+- mplayer to use the mplayer backend
+- a server running mpd to use mpd backend
+
+The default is to use the mplayer backend.
+
+If you want to try the mpd backend, place the pythm.conf-example
+in ~/.pythm/ and rename it to pythm.conf.
+then edit the file and set mpd host/port/passwort there.
+
+
+Common Problems:
+- Bug in pygtk on the FreeRunner: http://docs.openmoko.org/trac/ticket/1718
+- Bad GUI performance with mplayer backend.
