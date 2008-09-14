@@ -1,11 +1,11 @@
-from backend import *
+from pythm.backend import *
 import os
 import re
 import sys
 from mplayer import MPlayer
 from threading import Thread, Lock
 
-from pythm import is_numeric
+from pythm.functions import is_numeric
 
 import time
 
@@ -325,6 +325,40 @@ class MplayerBackend(PythmBackend):
         PythmBackend.shutdown(self)
     
         self.mplayer.quit()
+        
+    def browse_up(self,current_dir):
+        """
+        returns the parent dir of current dir
+        """
+        if current_dir != "/":
+            return os.path.split(current_dir)[0]
+        return None
+    
+    def clear(self):
+        """
+        clears playlist
+        """
+        self.entrydict = {}
+        self.first = None
+        self.current = None
+        self.last = None
+        self.emit_pl_changed()
+    
+    def add_dir(self,dir_to_add):
+        """
+        add a dir to pl
+        """
+        for file in os.listdir(dir_to_add):
+            dir = False
+            fullpath = os.path.join(dir_to_add,file)
+            if os.path.isdir(fullpath):
+                dir = True
+            if self.filter(file,dir):
+                if dir:
+                    self.add_dir(fullpath)
+                else:
+                    self.add(fullpath)
+    
             
     def check_state(self):
         """

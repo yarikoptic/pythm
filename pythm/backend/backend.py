@@ -119,6 +119,24 @@ class PythmBackend(object):
     def check_state(self):
         """callback of statechecker"""
         pass
+    
+    def browse_up(self,current_dir):
+        """
+        returns the parent dir of current dir
+        """
+        raise NotImplementedError("browse_up")
+    
+    def clear(self):
+        """
+        clears playlist
+        """
+        raise NotImplementedError("clear")
+    
+    def add_dir(self,dir):
+        """
+        add a dir to pl
+        """
+        raise NotImplementedError("add_dir")
             
                 
 class Signals:

@@ -22,6 +22,7 @@ class MpdBackend(PythmBackend):
         self.volume = None
         self.state = None
         self.song = None
+        self.mpd = None
         try:
             mpd_host = self.cfg.get("mpd","host","localhost")
             mpd_port = self.cfg.get("mpd","port","6600")
@@ -236,6 +237,18 @@ class MpdBackend(PythmBackend):
         emits signals to populate the gui
         """
         self.check_state()
+        
+    def browse_up(self,current_dir):
+        if current_dir != None and current_dir != "":
+            return os.path.split(current_dir)[0]
+        return None
+    
+    def clear(self):
+        self.mpd.clear()
+        self.check_state()
+    
+    def add_dir(self,dir):
+        self.add(dir)
             
     def check_state(self):
         try:

@@ -21,10 +21,16 @@ class PageList(Page):
         self.btnbox.add(self.btn_play)        
         self.btn_del = gtk.Button("del")
         self.btnbox.add(self.btn_del)        
+        self.btn_clear = gtk.Button("clear")
+        self.btnbox.add(self.btn_clear)        
         self.btn_up.connect("clicked",self.clicked_up)
         self.btn_down.connect("clicked",self.clicked_down)
         self.btn_play.connect("clicked",self.clicked_play)        
         self.btn_del.connect("clicked",self.clicked_del)
+        self.btn_clear.connect("clicked",self.clicked_clear)
+
+    def clicked_clear(self,widget):
+        self.backend.clear()
         
     def clicked_up(self,widget):
         plid = self.get_selected_plid()

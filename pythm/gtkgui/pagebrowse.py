@@ -8,19 +8,40 @@ class PageBrowse(Page):
     def __init__(self,backend):
         self.model = gtk.ListStore(object,str,bool)
         Page.__init__(self,backend)
-        
+
+        self.btn_up = gtk.Button("up")
+        self.btnbox.add(self.btn_up)
+        self.btn_up.connect("clicked",self.btn_up_clicked)
+                
         self.btn_add = gtk.Button("add")
         self.btnbox.add(self.btn_add)
         self.btn_add.connect("clicked",self.btn_add_clicked)
         
-        self.load_list()
+        self.btn_adddir= gtk.Button("add dir")
+        self.btnbox.add(self.btn_adddir)
+        self.btn_adddir.connect("clicked",self.btn_adddir_clicked)
+        self.path = None
         
+        self.load_list()
+    
+    def btn_adddir_clicked(self,btn):
+        entry = self.get_selected_entry()
+        if entry.isDir:
+            self.backend.add_dir(entry.id)
+    
+    def btn_up_clicked(self,btn):
+        path = self.backend.browse_up(self.path)
+        if path != None:
+            self.path = path
+            self.load_list(path)
+        
+    
     def btn_add_clicked(self,btn):
         self.add_selected_entry()
         
-        
     def load_list(self,path=None):
         br = self.backend.browse(path)
+        self.path = path
         self.model.clear()
         for f in br:
             self.model.append([f,f.caption,f.isDir])
@@ -29,16 +50,19 @@ class PageBrowse(Page):
     def row_activated(self, tv, path, view_column):
         self.add_selected_entry()
         
-    def add_selected_entry(self):
+    def get_selected_entry(self):
         iter = self.tv.get_selection().get_selected()[1]
         if iter is not None:
-            entry = self.model.get_value(iter,0)
+            return self.model.get_value(iter,0)
+        return None
+    
+    def add_selected_entry(self):
+        entry = self.get_selected_entry()
+        if entry != None:
             if entry.isDir:
                 self.load_list(entry.id)
             else:
                 self.backend.add(entry.id)
-                
-            print entry.id
         
         
     def content(self):

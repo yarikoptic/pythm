@@ -1,19 +1,55 @@
 Pythm 0.4 Readme
 
-to try pythm out, start the "pythm" script in the base directory.
+Description:
+------------
+	Pythm is a media player gui designed to work with mplayer or mpd as "slave" players.
+	use mplayer to hear music on the road or mpd control if your are at home.
+
+Installing pythm:
+-----------------
+	install pythm using opkg install <pkg>. Start with the shortcut or use 
+	the terminal and type "pythm-bin"
+	
+Run pythm with the source package:
+----------------------------------
+	Extract the source tarball, change to the Pythm-0.4 directory and start pythm
+	using the executable script "./pythm-bin" 
 
 Requirements:
-- pygtk
-- mplayer to use the mplayer backend
-- a server running mpd to use mpd backend
+-------------
+	- pygtk
+	- mplayer to use the mplayer backend
+	- a server running mpd to use mpd backend
 
-The default is to use the mplayer backend.
 
-If you want to try the mpd backend, place the pythm.conf-example (from the data directory)
-in ~/.pythm/ and rename it to pythm.conf.
-then edit the file and set mpd host/port/passwort there.
+Using mpd / config file:
+------------------------
+	Place the pythm.conf-example (from the conf directory)
+	in ~/.pythm/ and rename it to pythm.conf.
+	Change the settings in the file to fit your needs.
 
 
 Common Problems:
-- Bug in pygtk on the FreeRunner: http://docs.openmoko.org/trac/ticket/1718
-- Bad GUI performance with mplayer backend.
+----------------
+	- bug in pygtk on the FreeRunner: http://docs.openmoko.org/trac/ticket/1718
+	- bad GUI performance with mplayer backend.
+	- i18n: gettext support not implemented, planning
+	- mplayer-backend: random mode not implemented
+
+
+Version History:
+----------------
+
+2008-09-14 - Version 0.4:
+-------------------------
+	- added mpd backend
+	- added "clear playlist"
+	- added "add directory"
+	- added "up browse button"
+	- added configuration file
+
+2008-09-13 - Version 0.01:
+--------------------------
+	- first implementation
+	- mplayer support
+	- basic gui
