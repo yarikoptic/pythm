@@ -9,7 +9,7 @@ Requirements:
 
 The default is to use the mplayer backend.
 
-If you want to try the mpd backend, place the pythm.conf-example
+If you want to try the mpd backend, place the pythm.conf-example (from the data directory)
 in ~/.pythm/ and rename it to pythm.conf.
 then edit the file and set mpd host/port/passwort there.
 

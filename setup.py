@@ -16,8 +16,8 @@ setup(name='Pythm',
             'Programming Language :: Python',
             'Topic :: Multimedia :: Sound :: Players',
             ],
-        package_dir= {'pythm':'src'},
+        package_dir= {'pythm':'pythm'},
         packages=['pythm','pythm.gtkgui','pythm.backend','pythm.mplayer','pythm.mpd'],
-        data_files=[('share/applications', ['pythm.desktop'])],
-        scripts = ['pythm']
+        data_files=[('share/applications', ['data/pythm.desktop'])],
+        scripts = ['pythm-bin']
      )
