@@ -1,13 +1,14 @@
 #!/usr/bin/python
 import sys
 import os
+import traceback
 
 def main():
     try:
         from pythm import startPythm
         startPythm()
     except NameError,e:
-        print "could not find pythm: "+str(e)
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main()

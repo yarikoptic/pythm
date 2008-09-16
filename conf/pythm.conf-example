@@ -2,7 +2,9 @@
 # place this file in ~/.pythm/, name it pythm.conf
 
 [pythm]
-# the backend to use, can be either
+# backends to show in backend list
+backends=mpd,mplayer
+# the default backend to use, can be either
 # mpd or mplayer
 backend=mpd
 
@@ -17,6 +19,9 @@ port=6600
 
 # mplayer settings
 [mplayer]
+# renice val for mplayer process
+renice=19
+
 # directory containing music (the start folder for the browser)
 musicdir=~
 # allowed file endings in browse mode, comma separated

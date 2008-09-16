@@ -1,12 +1,14 @@
 from pythm.config import PythmConfig
-from threading import Thread
+from threading import Thread,Lock
 import time
 
 class StoppableThread(Thread):
     def __init__ (self):
+        Thread.__init__(self)
         self.running = True
-        self.stopped = False
+        self.stopped = True
     def run(self):
+        self.stopped = False
         while self.running == True:
             self.doWork()
         self.stopped = True
@@ -22,28 +24,48 @@ class StateChecker(StoppableThread):
     """
     def __init__ (self,backend):
         StoppableThread.__init__(self)
-        Thread.__init__(self)
         self.backend = backend
         
     def doWork(self):
         time.sleep(0.8)
-        self.backend.check_state()
+        if self.backend.is_connected():
+            self.backend.check_state()
 
 class PythmBackend(object):
     """Example backend"""
         
-    def __init__(self, eventhandler):
+    def __init__(self,name):
         """
         initializes a new backend.
         eventhandler is a gui callback function that ensures that 
         the backend functions emit signals in the gui's thread.
         """
-        self.statecheck = StateChecker(self)
+        self.name = name
         self.cfg = PythmConfig()
-        self.callbacks = {}
-        self.eventhandler = eventhandler
-        self.statecheck.start()
+        self.eventhandler = None
+        self.initialized = False
+        self.quiet = True
         pass
+    
+    def startup(self,handler):
+        self.statecheck = StateChecker(self)
+        self.initialized = True
+        self.eventhandler = handler
+        self.statecheck.start()
+        return True
+    
+    def is_started(self):
+        return self.initialized
+        
+    def is_connected(self):
+        return not self.quiet
+    
+    def disconnect(self):
+        self.quiet = True
+        
+    def reconnect(self):
+        self.quiet = False
+    
         
     def set_volume(self, newVol):
         """sets new volume"""
@@ -96,19 +118,23 @@ class PythmBackend(object):
         raise NotImplementedError()
     
     def shutdown(self):
-        self.statecheck.stop()
+        if self.is_started():
+            self.initialized = False
+            self.quiet = True
+            self.statecheck.stop()
     
     def connect(self, signal, callback):
-        if not self.callbacks.has_key(signal):
-            self.callbacks[signal] = []
+        if not self.cfg.callbacks.has_key(signal):
+            self.cfg.callbacks[signal] = []
             
-        self.callbacks[signal].append(callback)
+        self.cfg.callbacks[signal].append(callback)
     
     def emit(self, signal, *args):
         """raises callbacks"""
-        if self.callbacks.has_key(signal):
-            for call in self.callbacks[signal]:
-                self.eventhandler(call, *args)
+        if not self.quiet:
+            if self.cfg.callbacks.has_key(signal):
+                for call in self.cfg.callbacks[signal]:
+                    self.eventhandler(call, *args)
                 
     def populate(self):
         """
@@ -122,7 +148,7 @@ class PythmBackend(object):
     
     def browse_up(self,current_dir):
         """
-        returns the parent dir of current dir
+        the browse list parent dir of current dir
         """
         raise NotImplementedError("browse_up")
     
@@ -163,6 +189,8 @@ class Signals:
     POS_CHANGED = "pos_changed"
     # Signal args: new State
     STATE_CHANGED = "state_changed"
+    # Signal args: current_dir, browselist
+    BROWSER_CHANGED = "browser_changed"
         
     
 class State:
@@ -203,3 +231,62 @@ def browserEntryCompare(e1, e2):
         return 1
     
     return cmp(e1.caption, e2.caption)
+
+
+
+    
+class HelperThread(Thread):
+    
+    def __init__(self,backend):
+        Thread.__init__(self)
+        self.setDaemon(True)
+        self.backend = backend;
+        self.cmds = []
+        self.lock = Lock()
+        
+    def add_cmd(self,*args):
+        try:
+            self.lock.acquire()
+            self.cmds.append(args)
+        finally:
+            self.lock.release()
+        
+    def run(self):
+        while True:
+            time.sleep(0.1)
+            cmd = None
+            try:
+                self.lock.acquire()
+                if len(self.cmds) > 0:
+                    cmd = self.cmds.pop()
+            finally:
+                self.lock.release()
+            if cmd != None:
+                try:                        
+                    #print "executing "+cmd[0]
+                    args = cmd[1]
+                    getattr(self.backend,cmd[0])(*args)
+                    #print "executed "+cmd[0]
+                except Exception, e:
+                    print "error executing:" + str(e)
+
+class ThreadedBackend():
+    def __init__(self,backend):
+        self.thread = HelperThread(backend)
+        self.backend = backend
+        self.thread.start()
+        self.directcommands = ["startup","shutdown","connect",
+                               "reconnect","disconnect","name",
+                               "is_started","is_connected"]
+        
+    def __getattr__(self,*args):
+        cmd = args[0]
+        if cmd.startswith("__") or cmd in self.directcommands:
+            return getattr(self.backend,*args)
+        return lambda *args: self.func(cmd,args)
+    
+    def func(self,*args):
+        self.thread.add_cmd(*args)
+        
+
+    

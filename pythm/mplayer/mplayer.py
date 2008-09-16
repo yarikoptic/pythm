@@ -30,14 +30,14 @@ class MPlayer(object):
 
     exe_name = 'mplayer' if os.sep == '/' else 'mplayer.exe'
 
-    def __init__(self,args=None):
-        if args == None:
-            args = [self.exe_name, '-slave', '-quiet', '-idle','-nolirc']
-            self._mplayer = subprocess.Popen(args,
-                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=1)
-        else:
-            self._mplayer = subprocess.Popen(args,executable=self.exe_name,
-                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=1)
+    def __init__(self,niceval=None):
+        args = [self.exe_name, '-slave', '-quiet', '-idle','-nolirc']
+        self._mplayer = subprocess.Popen(args,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=1)
+        
+        if self._mplayer and niceval!=None:
+            pid = self._mplayer.pid
+            os.system("renice "+ str(niceval) +" -p "+str(pid))
         
         self.lock = Lock()
 

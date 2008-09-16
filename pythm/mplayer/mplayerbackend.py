@@ -34,32 +34,39 @@ class MplayerBackend(PythmBackend):
         Provides basic Player usage and file browsing.
     """
     
-    def __init__(self,evthandler):
-        PythmBackend.__init__(self,evthandler)
-        
-        endings = self.cfg.get("mplayer","endings","ogg,mp3")
-        self.endings = endings.lower().split(",")
-        
-        self.filters  = self.cfg.get_array("mplayer","filters")
-        
-        self.filematchers = []
-        self.filematchers.append(".*-(?P<artist>.*)-(?P<title>.*)\..*") 
-        self.filematchers.append("(?P<artist>.*)-(?P<title>.*)\..*") 
-        self.filematchers.append("(?P<title>.*)\..*")
-        
-        self.mplayer = MPlayer()
-        
-        self.current = None
-        self.first = None
-        self.last = None
-        self.entrydict = {}
-        
-        self.gotpos = False
-        
-        self.random = False
-        self.repeat = False
-        self.state = State.STOPPED
-        self.lock = Lock()
+    def __init__(self):
+        PythmBackend.__init__(self,"mplayer")
+
+    def startup(self,handler):
+        try:
+            self.lock = Lock()
+                            
+            self.current = None
+            self.first = None
+            self.last = None
+            self.entrydict = {}
+            
+            self.gotpos = False
+            
+            self.random = False
+            self.repeat = False
+            self.state = State.STOPPED
+            
+            renice = self.cfg.get("mplayer","renice",None)
+            self.mplayer = MPlayer(renice)
+            endings = self.cfg.get("mplayer","endings","ogg,mp3")
+            self.endings = endings.lower().split(",")
+            
+            self.filters  = self.cfg.get_array("mplayer","filters")
+            
+            self.filematchers = []
+            self.filematchers.append(".*-(?P<artist>.*)-(?P<title>.*)\..*") 
+            self.filematchers.append("(?P<artist>.*)-(?P<title>.*)\..*") 
+            self.filematchers.append("(?P<title>.*)\..*")
+            return PythmBackend.startup(self,handler)
+        except Exception,e:
+            print "could not start mplayer: "+str(e)            
+            return False
     
     def set_volume(self,newVol):
         """sets new volume"""
@@ -89,7 +96,7 @@ class MplayerBackend(PythmBackend):
                 entry = self.current[1]
                 self.emit(Signals.SONG_CHANGED,entry)
                 self.songend = time.time()
-                array = self.mplayer.arraycmd("loadfile","Starting playback...",entry.id)
+                array = self.mplayer.arraycmd("loadfile","======",entry.id)
                 self.fill_entry(array, entry)
                 
                 if entry.length == -1:
@@ -196,7 +203,7 @@ class MplayerBackend(PythmBackend):
                 ret.append(BrowserEntry(fullpath,file,dir))
         
         ret.sort(cmp=browserEntryCompare)
-        return ret
+        self.emit(Signals.BROWSER_CHANGED,parentDir,ret)
     
     def filter(self,file,dir):
         """
@@ -322,17 +329,18 @@ class MplayerBackend(PythmBackend):
         """
         shuts down backend
         """
-        PythmBackend.shutdown(self)
-    
-        self.mplayer.quit()
+        try:
+            PythmBackend.shutdown(self)
+            self.mplayer.quit()
+        except:
+            pass
         
     def browse_up(self,current_dir):
         """
-        returns the parent dir of current dir
+        browses the parent dir of current dir
         """
-        if current_dir != "/":
-            return os.path.split(current_dir)[0]
-        return None
+        if current_dir != "/" and current_dir!=None:
+            self.browse(os.path.split(current_dir)[0])
     
     def clear(self):
         """
@@ -388,6 +396,8 @@ class MplayerBackend(PythmBackend):
         self.set_repeat(False)        
         self.set_random(False)
         self.set_state(State.STOPPED)
+        self.emit_pl_changed()
+        self.browse()
 
         
         

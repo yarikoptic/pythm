@@ -7,32 +7,37 @@ import traceback
 class MpdBackend(PythmBackend):
     """Example backend"""
         
-    def __init__(self, eventhandler):
+    def __init__(self):
         """
         initializes a new backend.
         eventhandler is a gui callback function that ensures that 
         the backend functions emit signals in the gui's thread.
         """
 
-        PythmBackend.__init__(self,eventhandler)
-        self.random = None
-        self.repeat = None
-        self.playlistid = None
-        self.playlist = []
-        self.volume = None
-        self.state = None
-        self.song = None
+        PythmBackend.__init__(self,"mpd")
         self.mpd = None
+   
+    def startup(self,handler):
         try:
+            self.random = None
+            self.repeat = None
+            self.playlistid = None
+            self.playlist = []
+            self.volume = None
+            self.state = None
+            self.song = None
+            
             mpd_host = self.cfg.get("mpd","host","localhost")
             mpd_port = self.cfg.get("mpd","port","6600")
             mpd_password = self.cfg.get("mpd","pass",None)
             
             self.mpd = mpdlib2.connect(host=mpd_host, port=mpd_port, password=mpd_password)
+            
+            return PythmBackend.startup(self,handler)
         except Exception,e:
             self.mpd = None
-            print "could not connect to mpd server: "+str(e)
-        
+            print "could not connect to mpd server: "+str(e)            
+            return False
         
     def set_volume(self, newVol):
         """sets new volume"""
@@ -127,7 +132,7 @@ class MpdBackend(PythmBackend):
                     name = art + " - " + tit
             ret.append(BrowserEntry(fn,name,dir))
             
-        return ret
+        self.emit(Signals.BROWSER_CHANGED,parentDir,ret)
     
     def add(self, beId):
         """adds a browseEntry to the pl"""
@@ -236,12 +241,21 @@ class MpdBackend(PythmBackend):
         """
         emits signals to populate the gui
         """
+        print "populate"
+        self.random = None
+        self.repeat = None
+        self.playlistid = None
+        self.playlist = []
+        self.volume = None
+        self.state = None
+        self.song = None
         self.check_state()
+        self.browse()
         
     def browse_up(self,current_dir):
         if current_dir != None and current_dir != "":
-            return os.path.split(current_dir)[0]
-        return None
+             self.browse(os.path.split(current_dir)[0])
+
     
     def clear(self):
         self.mpd.clear()

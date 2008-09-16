@@ -5,26 +5,27 @@ import gtk
 from page import Page
 from pythm.backend import Signals,State
 from pythm.functions import format_time
+from gtkhelper import ImageButton
 
 class PagePlay(Page):
-    def __init__(self,backend):
-        Page.__init__(self,backend);
-        self.backend.connect(Signals.VOLUME_CHANGED,self.volume_changed)
-        self.backend.connect(Signals.RANDOM_CHANGED,self.random_changed)
-        self.backend.connect(Signals.REPEAT_CHANGED,self.repeat_changed)
-        self.backend.connect(Signals.SONG_CHANGED,self.song_changed)
-        self.backend.connect(Signals.POS_CHANGED,self.pos_changed)
-        self.backend.connect(Signals.STATE_CHANGED,self.state_changed)
+    def __init__(self):
+        Page.__init__(self);
+        self.cfg.get_backend().connect(Signals.VOLUME_CHANGED,self.volume_changed)
+        self.cfg.get_backend().connect(Signals.RANDOM_CHANGED,self.random_changed)
+        self.cfg.get_backend().connect(Signals.REPEAT_CHANGED,self.repeat_changed)
+        self.cfg.get_backend().connect(Signals.SONG_CHANGED,self.song_changed)
+        self.cfg.get_backend().connect(Signals.POS_CHANGED,self.pos_changed)
+        self.cfg.get_backend().connect(Signals.STATE_CHANGED,self.state_changed)
         
-        self.btn_prev = gtk.Button("prev")
+        self.btn_prev = ImageButton(gtk.STOCK_MEDIA_PREVIOUS)
         self.btnbox.add(self.btn_prev)
-        self.btn_stop = gtk.Button("stop")
+        self.btn_stop = ImageButton(gtk.STOCK_MEDIA_STOP)
         self.btnbox.add(self.btn_stop)
-        self.btn_pause = gtk.Button("pause")
+        self.btn_pause = ImageButton(gtk.STOCK_MEDIA_PAUSE)
         self.btnbox.add(self.btn_pause)
-        self.btn_play = gtk.Button("play")
+        self.btn_play = ImageButton(gtk.STOCK_MEDIA_PLAY)
         self.btnbox.add(self.btn_play)
-        self.btn_next = gtk.Button("next")
+        self.btn_next = ImageButton(gtk.STOCK_MEDIA_NEXT)
         self.btnbox.add(self.btn_next)
         
         
@@ -38,15 +39,15 @@ class PagePlay(Page):
 
     def btn_clicked(self,widget):        
         if widget == self.btn_next:
-            self.backend.next()
+            self.cfg.get_backend().next()
         elif widget == self.btn_play:
-            self.backend.play()
+            self.cfg.get_backend().play()
         elif widget == self.btn_stop:
-            self.backend.stop()
+            self.cfg.get_backend().stop()
         elif widget == self.btn_pause:
-            self.backend.pause()
+            self.cfg.get_backend().pause()
         elif widget == self.btn_prev:
-            self.backend.prev()
+            self.cfg.get_backend().prev()
 
         
     def state_changed(self,newstate):
@@ -131,16 +132,16 @@ class PagePlay(Page):
         return vbox
     
     def on_random(self,widget):
-        self.backend.set_random(widget.get_active())
+        self.cfg.get_backend().set_random(widget.get_active())
         
     def on_repeat(self,widget):
-        self.backend.set_repeat(widget.get_active())
+        self.cfg.get_backend().set_repeat(widget.get_active())
     
     def on_volume_change(self,range):
         if self.volevent == False:
-            self.backend.set_volume(range.get_value())
+            self.cfg.get_backend().set_volume(range.get_value())
             
     def on_pos_change(self,range):
         if self.posevent == False:
-            self.backend.seek(range.get_value())
+            self.cfg.get_backend().seek(range.get_value())
         

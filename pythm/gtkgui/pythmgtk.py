@@ -1,13 +1,15 @@
 import pygtk
 pygtk.require('2.0')
 import gtk
-import gobject
+
 
 from pagelist import *
 from pageplay import *
 from pagebrowse import *
+from pagebackend import *
 from pythm.lang import _
-
+from pythm.backend import ThreadedBackend
+from pythm.config import PythmConfig
 
 class PythmGtk:
 
@@ -21,10 +23,11 @@ class PythmGtk:
 
     def destroy(self, widget, data=None):
         print "destroy signal occurred"
-        self.backend.shutdown()
+        for backend in self.cfg.get_backends():
+            backend.shutdown()
         gtk.main_quit()
 
-    def __init__(self,backendClass):
+    def __init__(self):
         # create a new window
         gtk.gdk.threads_init()
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
@@ -34,19 +37,26 @@ class PythmGtk:
         self.window.connect("delete_event", self.delete_event)
         self.window.connect("destroy", self.destroy)
         
-        self.backend = backendClass(self.gtkcallback)
-        #self.button = gtk.Button("Hello World")
-        #self.button.connect("clicked", self.hello, None)
-        #self.button.connect_object("clicked", gtk.Widget.destroy, self.window)
+        self.cfg = PythmConfig()
+        
         self.vbox = gtk.VBox()
         self.tabs = gtk.Notebook()
         self.tabs.set_property("homogeneous",True)
-        play = PagePlay(self.backend)
-        self.tabs.append_page(play,gtk.Label("Play"))
+        play = PagePlay()
+        img = gtk.image_new_from_stock(gtk.STOCK_MEDIA_PLAY, gtk.ICON_SIZE_BUTTON)
+        img.set_padding(3,3)
+        self.tabs.append_page(play,img)
         self.tabs.child_set(play,"tab-expand",True)
+        img = gtk.image_new_from_stock(gtk.STOCK_EDIT, gtk.ICON_SIZE_BUTTON)
+        img.set_padding(3,3)        
+        self.tabs.append_page(PageList(),img)
+        img = gtk.image_new_from_stock(gtk.STOCK_FIND, gtk.ICON_SIZE_BUTTON)
+        img.set_padding(3,3)
+        self.tabs.append_page(PageBrowse(),img)
         
-        self.tabs.append_page(PageList(self.backend),gtk.Label("List"))
-        self.tabs.append_page(PageBrowse(self.backend),gtk.Label("Browse"))
+        img = gtk.image_new_from_stock(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_BUTTON)
+        img.set_padding(3,3)
+        self.tabs.append_page(PageBackend(),img)
 
         self.vbox.add(self.tabs)
         
@@ -56,16 +66,7 @@ class PythmGtk:
         
         # and the window
         self.window.show_all()
-        
-        #initialize
-        self.backend.populate()
-        
+            
         gtk.main()
 
-
-    def gtkcallback(self,func,*args):
-        """
-        callback method for signals of backend (out of gtk-thread)
-        """
-        gobject.idle_add(func,*args)
         

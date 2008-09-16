@@ -3,47 +3,44 @@ pygtk.require('2.0')
 import gtk
 from page import Page
 from pythm.lang import _
+from pythm.backend import Signals
+from gtkhelper import ImageButton
 
 class PageBrowse(Page):
-    def __init__(self,backend):
+    def __init__(self):
         self.model = gtk.ListStore(object,str,bool)
-        Page.__init__(self,backend)
+        Page.__init__(self)
 
-        self.btn_up = gtk.Button("up")
+        self.btn_up = ImageButton(gtk.STOCK_GO_UP)
         self.btnbox.add(self.btn_up)
         self.btn_up.connect("clicked",self.btn_up_clicked)
                 
-        self.btn_add = gtk.Button("add")
+        self.btn_add = ImageButton(gtk.STOCK_ADD)
         self.btnbox.add(self.btn_add)
         self.btn_add.connect("clicked",self.btn_add_clicked)
         
-        self.btn_adddir= gtk.Button("add dir")
+        self.btn_adddir= ImageButton(gtk.STOCK_DIRECTORY)
         self.btnbox.add(self.btn_adddir)
         self.btn_adddir.connect("clicked",self.btn_adddir_clicked)
         self.path = None
         
-        self.load_list()
+        self.cfg.get_backend().connect(Signals.BROWSER_CHANGED,self.browser_changed)
     
     def btn_adddir_clicked(self,btn):
         entry = self.get_selected_entry()
-        if entry.isDir:
-            self.backend.add_dir(entry.id)
+        if entry != None and entry.isDir:
+            self.cfg.get_backend().add_dir(entry.id)
     
     def btn_up_clicked(self,btn):
-        path = self.backend.browse_up(self.path)
-        if path != None:
-            self.path = path
-            self.load_list(path)
-        
+        self.cfg.get_backend().browse_up(self.path)
     
     def btn_add_clicked(self,btn):
         self.add_selected_entry()
         
-    def load_list(self,path=None):
-        br = self.backend.browse(path)
+    def browser_changed(self,path,list):
         self.path = path
         self.model.clear()
-        for f in br:
+        for f in list:
             self.model.append([f,f.caption,f.isDir])
             
     
@@ -60,9 +57,9 @@ class PageBrowse(Page):
         entry = self.get_selected_entry()
         if entry != None:
             if entry.isDir:
-                self.load_list(entry.id)
+                self.cfg.get_backend().browse(entry.id)
             else:
-                self.backend.add(entry.id)
+                self.cfg.get_backend().add(entry.id)
         
         
     def content(self):
