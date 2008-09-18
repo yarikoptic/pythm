@@ -97,6 +97,7 @@ class PagePlay(Page):
         self.timelabel = gtk.Label("00:00")
         vbox.pack_start(self.timelabel,True,True,0)
         
+        
         #pos slider
         hbox2 = gtk.HBox()
         hbox2.pack_start(gtk.Label("Pos."),False,False,0)
@@ -118,16 +119,18 @@ class PagePlay(Page):
         self.vol_scale.set_increments(5,20)
         self.vol_scale.set_update_policy(gtk.UPDATE_DISCONTINUOUS)
         hbox.add(self.vol_scale)
-        
+        vbox.add(hbox)
+                
         #random, repeat
+        hbox3 = gtk.HBox()
         self.random = gtk.CheckButton(label="random")
-        hbox.pack_start(self.random,False,False,0)
+        hbox3.pack_start(self.random,True,False,0)
         self.repeat = gtk.CheckButton(label="repeat")
-        hbox.pack_start(self.repeat,False,False,0)
+        hbox3.pack_start(self.repeat,True,False,0)
         self.random.connect("toggled",self.on_random)
         self.repeat.connect("toggled",self.on_repeat)
         
-        vbox.add(hbox)
+        vbox.add(hbox3)
         
         return vbox
     

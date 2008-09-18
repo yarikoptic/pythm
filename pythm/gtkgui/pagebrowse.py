@@ -4,11 +4,11 @@ import gtk
 from page import Page
 from pythm.lang import _
 from pythm.backend import Signals
-from gtkhelper import ImageButton
+from gtkhelper import ImageButton,get_scrolled_widget
 
 class PageBrowse(Page):
     def __init__(self):
-        self.model = gtk.ListStore(object,str,bool)
+        self.model = gtk.ListStore(object,str,gtk.gdk.Pixbuf)
         Page.__init__(self)
 
         self.btn_up = ImageButton(gtk.STOCK_GO_UP)
@@ -41,8 +41,17 @@ class PageBrowse(Page):
         self.path = path
         self.model.clear()
         for f in list:
-            self.model.append([f,f.caption,f.isDir])
+            if f.isDir:
+                pbuf = self.get_icon_pixbuf('STOCK_DIRECTORY')
+            else:
+                pbuf = self.get_icon_pixbuf('STOCK_FILE')
+                
+            self.model.append([f,f.caption,pbuf])
             
+    def get_icon_pixbuf(self, stock):
+        return self.tv.render_icon(stock_id=getattr(gtk, stock),
+                                size=gtk.ICON_SIZE_MENU,
+                                detail=None)
     
     def row_activated(self, tv, path, view_column):
         self.add_selected_entry()
@@ -68,15 +77,18 @@ class PageBrowse(Page):
         self.tv.connect("row_activated", self.row_activated)
         
         #tv.append_column(gtk.TreeViewColumn("No",gtk.CellRendererText(),text=0))
-        rend = gtk.CellRendererText()
-        colDir = gtk.TreeViewColumn("Dir",rend,text=2)
-        colDir.set_cell_data_func(rend, dirRender)
-        colFile = gtk.TreeViewColumn("File",gtk.CellRendererText(),text=1)
-        self.tv.append_column(colDir) 
-        self.tv.append_column(colFile)     
-        sc = gtk.ScrolledWindow()
-        sc.set_property("vscrollbar-policy",gtk.POLICY_AUTOMATIC)
-        sc.set_property("hscrollbar-policy",gtk.POLICY_AUTOMATIC)
+        rend = gtk.CellRendererPixbuf()
+        col_dir = gtk.TreeViewColumn("Dir")
+        col_dir.pack_start(rend,expand=False)
+        col_dir.add_attribute(rend,'pixbuf',2)
+        col_file = gtk.TreeViewColumn("File",gtk.CellRendererText(),text=1)
+        self.tv.append_column(col_dir) 
+        self.tv.append_column(col_file)     
+        sc = get_scrolled_widget()
+        #sc = gtk.ScrolledWindow()
+        #sc.set_property("vscrollbar-policy",gtk.POLICY_AUTOMATIC)
+        #sc.set_property("hscrollbar-policy",gtk.POLICY_AUTOMATIC)
+        
         sc.add(self.tv)
         vbox.pack_start(sc,True,True,0)
         return vbox

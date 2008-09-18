@@ -19,22 +19,28 @@ class PythmConfig(ConfigParser):
             self._ready = True
             ConfigParser.__init__(self)
             cfgfile =  os.path.join(os.path.expanduser("~"), ".pythm", "pythm.conf")
+            if not os.path.exists(cfgfile):
+                cfgfile = "/etc/pythm.conf"
+                
             self.read(cfgfile)
             self.backends = []
-            self.backend = None
+            self.backend = backend.DummyBackend()
             self.callbacks = {}
             self.initialize_backends()
             
     def initialize_backends(self):
-        defaultbackend = self.get("pythm","backend","mplayer")
-        print "using " + defaultbackend + " backend"
+        defaultbackend = self.get("pythm","backend",None)
+        print "using " + str(defaultbackend) + " backend"
         backends = self.get_commaseparated("pythm","backends","mpd,mplayer")
         for b in backends:
-            module = self.my_import("pythm."+b)
-            instance = backend.ThreadedBackend(module.backendClass())
-            self.backends.append(instance)
-            if b == defaultbackend:
-                self.backend = instance
+            try:
+                module = self.my_import("pythm."+b)
+                instance = backend.ThreadedBackend(module.backendClass())
+                self.backends.append(instance)
+                if b == defaultbackend:
+                    self.backend = instance
+            except:
+                print "could not load backend" + b
         
     def my_import(self,name):
         mod = __import__(name)

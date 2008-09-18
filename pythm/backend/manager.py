@@ -27,6 +27,5 @@ class BackendManager():
     
     def stop(self,backend):
         if backend.is_started():
-            backend.disconnect()
             backend.shutdown()
             

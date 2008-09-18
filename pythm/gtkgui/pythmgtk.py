@@ -56,6 +56,7 @@ class PythmGtk:
         
         img = gtk.image_new_from_stock(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_BUTTON)
         img.set_padding(3,3)
+        box = gtk.HBox()
         self.tabs.append_page(PageBackend(),img)
 
         self.vbox.add(self.tabs)

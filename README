@@ -1,4 +1,4 @@
-Pythm 0.4 Readme
+Pythm 0.5 Readme
 
 Description:
 ------------
@@ -12,33 +12,60 @@ Installing pythm:
 	
 Run pythm with the source package:
 ----------------------------------
-	Extract the source tarball, change to the Pythm-0.4 directory and start pythm
+	Extract the source tarball, change to the Pythm-0.5 directory and start pythm
 	using the executable script "./pythm-bin" 
 
 Requirements:
 -------------
 	- pygtk
-	- mplayer to use the mplayer backend
-	- a server running mpd to use mpd backend
+	- python-subprocess
+	- (optional) mplayer to use the mplayer backend
+	- (optional) a server running mpd
+	- (optional) python-mokoui for finger scrolling
 
 
 Using mpd / config file:
 ------------------------
+	If you downloaded the source-package:
 	Place the pythm.conf-example (from the conf directory)
 	in ~/.pythm/ and rename it to pythm.conf.
-	Change the settings in the file to fit your needs.
+	The ipk-package now contains the pythm.conf and installs it in
+	/etc/pythm.conf. feel free to copy it to your ~/.pythm/-directory.
+	
+	Change the settings in the file to fit your needs:
+	e.g. mpd host, mpd port and password
 
 
 Common Problems:
 ----------------
 	- bug in pygtk on the FreeRunner: http://docs.openmoko.org/trac/ticket/1718
-	- bad GUI performance with mplayer backend.
 	- i18n: gettext support not implemented, planning
 	- mplayer-backend: random mode not implemented
+	- mplayer-backend: umlaut problems with filenames
+
+
+Report Bugs:
+------------
+	If there is something wrong, please use to the gforge-tracker:
+	https://projects.openmoko.org/tracker/?group_id=198
+	Report a bug or look there for possible workarounds.
 
 
 Version History:
 ----------------
+
+2008-09-18 - Version 0.5:
+-------------------------
+	- added backend control view
+		- ability to start, stop and connect backends to the gui
+	- added backend status icon
+		- if enabled, a command is currently processed.
+	- added threaded calls to backend
+		-> better gui responses
+	- added icons
+	- small gui fixes
+	- mplayer process is now renice-able. (configurable)
+
 
 2008-09-14 - Version 0.4:
 -------------------------
@@ -47,6 +74,7 @@ Version History:
 	- added "add directory"
 	- added "up browse button"
 	- added configuration file
+
 
 2008-09-13 - Version 0.01:
 --------------------------

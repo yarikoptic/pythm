@@ -96,7 +96,8 @@ class MplayerBackend(PythmBackend):
                 entry = self.current[1]
                 self.emit(Signals.SONG_CHANGED,entry)
                 self.songend = time.time()
-                array = self.mplayer.arraycmd("loadfile","======",entry.id)
+                fn = entry.id
+                array = self.mplayer.arraycmd("loadfile","======",fn)
                 self.fill_entry(array, entry)
                 
                 if entry.length == -1:
@@ -199,6 +200,8 @@ class MplayerBackend(PythmBackend):
             fullpath = os.path.join(parentDir,file)
             if os.path.isdir(fullpath):
                 dir = True
+            fullpath = unicode(fullpath,sys.getfilesystemencoding()).encode("utf-8")
+            
             if self.filter(file,dir):
                 ret.append(BrowserEntry(fullpath,file,dir))
         

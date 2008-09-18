@@ -39,6 +39,8 @@ class PageBackend(Page):
         
         
         self.refresh()
+        self.row_selected(None)
+        self.set_sensitive(True)
 
     def start_backend(self,backend):
         if self.mgr.start(backend,self.gtkcallback):
@@ -48,12 +50,15 @@ class PageBackend(Page):
     
     def btn_start_clicked(self,btn):
         self.start_backend(self.get_selected())
+        self.refresh()
     
     def btn_stop_clicked(self,btn):
         self.mgr.stop(self.get_selected())
+        self.refresh()
         
     def btn_connect_clicked(self,btn):
         self.mgr.connect(self.get_selected())
+        self.refresh()
         
     def btn_refresh_clicked(self,btn):
         self.refresh()
@@ -77,10 +82,15 @@ class PageBackend(Page):
         if backend != None:
             self.btn_start.set_sensitive(not backend.is_started())
             self.btn_stop.set_sensitive(backend.is_started())
-            self.btn_connect.set_sensitive(not backend.is_connected())
+            self.btn_connect.set_sensitive(backend.is_started() and not backend.is_connected())
+        else:
+            self.btn_start.set_sensitive(False)
+            self.btn_stop.set_sensitive(False)
+            self.btn_connect.set_sensitive(False)                
                 
-                
-            
+    def check_disabled(self,state):
+        """overwritten"""
+        pass
 
     def get_selected(self):
         iter = self.tv.get_selection().get_selected()[1]
@@ -94,7 +104,7 @@ class PageBackend(Page):
         self.tv.get_selection().connect("changed", self.row_selected)
         
         colname = gtk.TreeViewColumn("Backend",gtk.CellRendererText(),text=1)
-        colstatus = gtk.TreeViewColumn("Active",gtk.CellRendererText(),text=2)
+        colstatus = gtk.TreeViewColumn("State",gtk.CellRendererText(),text=2)
         colconnected = gtk.TreeViewColumn("Connected",gtk.CellRendererText(),text=3)
         
         self.tv.append_column(colname) 

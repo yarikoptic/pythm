@@ -2,6 +2,7 @@ import os
 import select
 import subprocess
 import time
+import sys
 from threading import Lock
 
 #http://code.activestate.com/recipes/542195/
@@ -72,7 +73,9 @@ class MPlayer(object):
         cmd = '%s%s%s\n'%(name,
                 ' ' if args else '',
                 ' '.join(repr(a) for a in args)
-                )
+                )        
+        
+        
         if readall:
             ret = []
         else:
@@ -101,7 +104,7 @@ class MPlayer(object):
                                 ret =  val
                             break
         except Exception,e:
-            print e
+            print "error in mplayer.cmd: ", e
             pass
         
         

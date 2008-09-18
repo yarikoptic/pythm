@@ -119,6 +119,11 @@ class PythmBackend(object):
     
     def shutdown(self):
         if self.is_started():
+            self.emit(Signals.BROWSER_CHANGED,None,[])
+            self.emit(Signals.PL_CHANGED,[])
+            self.emit(Signals.STATE_CHANGED,State.DISABLED)
+            self.disconnect()
+            
             self.initialized = False
             self.quiet = True
             self.statecheck.stop()
@@ -191,12 +196,15 @@ class Signals:
     STATE_CHANGED = "state_changed"
     # Signal args: current_dir, browselist
     BROWSER_CHANGED = "browser_changed"
+    # COMMAND_STATE, true oder false
+    COMMAND_STATE = "command_state"
         
     
 class State:
     PLAYING = 0
     PAUSED = 1
     STOPPED = 2
+    DISABLED = 3
 
 
 class PlaylistEntry:
@@ -247,6 +255,9 @@ class HelperThread(Thread):
     def add_cmd(self,*args):
         try:
             self.lock.acquire()
+            if len(self.cmds) == 0:
+                self.backend.emit(Signals.COMMAND_STATE,False)
+                
             self.cmds.append(args)
         finally:
             self.lock.release()
@@ -269,8 +280,14 @@ class HelperThread(Thread):
                     #print "executed "+cmd[0]
                 except Exception, e:
                     print "error executing:" + str(e)
+                finally:
+                    if len(self.cmds) == 0:
+                        self.backend.emit(Signals.COMMAND_STATE,True);
 
 class ThreadedBackend():
+    """
+    Backend that threads the function calls from the gui
+    """
     def __init__(self,backend):
         self.thread = HelperThread(backend)
         self.backend = backend
@@ -288,5 +305,25 @@ class ThreadedBackend():
     def func(self,*args):
         self.thread.add_cmd(*args)
         
+        
+        
+class DummyBackend():
+    """
+    dummy backend that connects all signals
+    """
+    def __init__(self):
+        self.cfg = PythmConfig()
+        
+    def __getattr__(self,*args):
+        return lambda *args: self.func(args)
+    
+    def func(self,*args):
+        pass
+    
+    def connect(self, signal, callback):
+        if not self.cfg.callbacks.has_key(signal):
+            self.cfg.callbacks[signal] = []
+            
+        self.cfg.callbacks[signal].append(callback)
 
     

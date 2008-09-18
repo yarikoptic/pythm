@@ -5,7 +5,7 @@ from pythm.backend import Signals
 from pythm.functions import format_time
 
 from page import Page
-from gtkhelper import ImageButton
+from gtkhelper import ImageButton,get_scrolled_widget
 
 
 class PageList(Page):
@@ -79,15 +79,22 @@ class PageList(Page):
         vbox = gtk.VBox()
         self.tv = gtk.TreeView(self.model)
         #tv.append_column(gtk.TreeViewColumn("No",gtk.CellRendererText(),text=0))
-        self.tv.append_column(gtk.TreeViewColumn("Artist",gtk.CellRendererText(),text=1))
-        self.tv.append_column(gtk.TreeViewColumn("Title",gtk.CellRendererText(),text=2))       
+        col_artist = gtk.TreeViewColumn("Artist",gtk.CellRendererText(),text=1)
+        col_artist.set_resizable(True)
+        self.tv.append_column(col_artist)
+        col_title = gtk.TreeViewColumn("Title",gtk.CellRendererText(),text=2)
+        col_title.set_resizable(True)
+        self.tv.append_column(col_title)       
         rend = gtk.CellRendererText()
-        colLength = gtk.TreeViewColumn("Length",rend,text=3)
-        self.tv.append_column(colLength) 
-        colLength.set_cell_data_func(rend, length_render)
-        sc = gtk.ScrolledWindow()
-        sc.set_property("vscrollbar-policy",gtk.POLICY_AUTOMATIC)
-        sc.set_property("hscrollbar-policy",gtk.POLICY_AUTOMATIC)
+        col_length = gtk.TreeViewColumn("Length",rend,text=3)
+        col_length.set_resizable(True)
+        self.tv.append_column(col_length) 
+        col_length.set_cell_data_func(rend, length_render)
+        sc = get_scrolled_widget()
+        
+        #sc = gtk.ScrolledWindow()
+        #sc.set_property("vscrollbar-policy",gtk.POLICY_AUTOMATIC)
+        #sc.set_property("hscrollbar-policy",gtk.POLICY_AUTOMATIC)
         sc.add(self.tv)
         vbox.pack_start(sc,True,True,0)
         return vbox
