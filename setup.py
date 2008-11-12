@@ -2,13 +2,13 @@ from distutils.core import setup
 import glob
     
 setup(name='Pythm',
-        version='0.5',
+        version='0.5.1',
         description='Frontend for mplayer and mpd',
         author='Matthias Hans',
         author_email='ughl0r@yahoo.de',
         url='http://pythm.projects.openmoko.org',
         classifiers=[
-            'Development Status :: 3 - Alpha',
+            'Development Status :: 4 - Beta',
             'Environment :: Gnome',
             'Intended Audience :: End Users/Phone UI',
             'License :: GNU General Public License (GPL)',

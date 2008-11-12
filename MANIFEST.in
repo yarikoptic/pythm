@@ -1,1 +1,2 @@
 include conf/pythm.conf-example
+include doc/README

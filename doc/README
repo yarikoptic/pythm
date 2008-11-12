@@ -1,4 +1,4 @@
-Pythm 0.5 Readme
+Pythm 0.5.1 Readme
 
 Description:
 ------------
@@ -12,7 +12,7 @@ Installing pythm:
 	
 Run pythm with the source package:
 ----------------------------------
-	Extract the source tarball, change to the Pythm-0.5 directory and start pythm
+	Extract the source tarball, change to the Pythm-0.5.1 directory and start pythm
 	using the executable script "./pythm-bin" 
 
 Requirements:
@@ -36,12 +36,11 @@ Using mpd / config file:
 	e.g. mpd host, mpd port and password
 
 
-Common Problems:
+Known Problems:
 ----------------
 	- bug in pygtk on the FreeRunner: http://docs.openmoko.org/trac/ticket/1718
 	- i18n: gettext support not implemented, planning
 	- mplayer-backend: random mode not implemented
-	- mplayer-backend: umlaut problems with filenames
 
 
 Report Bugs:
@@ -53,6 +52,10 @@ Report Bugs:
 
 Version History:
 ----------------
+
+2008-11-12 - Version 0.5.1:
+---------------------------
+  - fixed umlaut problems
 
 2008-09-18 - Version 0.5:
 -------------------------
