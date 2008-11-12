@@ -73,8 +73,10 @@ class MPlayer(object):
         cmd = '%s%s%s\n'%(name,
                 ' ' if args else '',
                 ' '.join(repr(a) for a in args)
-                )        
-        
+                )       
+        return self.innercmd(cmd,key,readall)
+         
+    def innercmd(self,cmd,key,readall):
         
         if readall:
             ret = []

@@ -20,7 +20,7 @@ setup(name='Pythm',
         packages=['pythm','pythm.gtkgui','pythm.backend','pythm.mplayer','pythm.mpd'],
         data_files=[('share/applications', ['data/pythm.desktop']),
                     ('/etc', ['conf/pythm.conf']),
-                    ('share/pythm/', ['README'])
+                    ('share/pythm/', ['doc/README'])
                     ],
         scripts = ['pythm-bin']
      )

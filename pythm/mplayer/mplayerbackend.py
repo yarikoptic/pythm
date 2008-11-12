@@ -97,7 +97,8 @@ class MplayerBackend(PythmBackend):
                 self.emit(Signals.SONG_CHANGED,entry)
                 self.songend = time.time()
                 fn = entry.id
-                array = self.mplayer.arraycmd("loadfile","======",fn)
+                array = self.mplayer.innercmd("loadfile '" + fn + "'\n","======",True)
+                #array = self.mplayer.arraycmd("loadfile","======",fn)
                 self.fill_entry(array, entry)
                 
                 if entry.length == -1:

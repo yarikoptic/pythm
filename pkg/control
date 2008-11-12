@@ -1,0 +1,11 @@
+Package: pythm
+Version: 0.5
+Description: Python Media Player with Mplayer and MPD support
+Architecture: armv4t
+Section: extra
+Priority: optional
+Maintainer: Matthias Hans <ughl0r@yahoo.de>
+Homepage: http://projects.openmoko.org/projects/pythm/
+Depends: python-pygtk,python-subprocess
+Suggests: mplayer,python-mokoui
+Source: https://svn.projects.openmoko.org/svnroot/pythm

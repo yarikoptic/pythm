@@ -21,7 +21,7 @@ Requirements:
 	- python-subprocess
 	- (optional) mplayer to use the mplayer backend
 	- (optional) a server running mpd
-	- (optional) python-mokoui for finger scrolling
+	- (optional) python-mokoui2 for finger scrolling
 
 
 Using mpd / config file:
