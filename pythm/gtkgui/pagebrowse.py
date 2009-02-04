@@ -25,7 +25,7 @@ class PageBrowse(Page):
         self.path = None
         
         self.cfg.get_backend().connect(Signals.BROWSER_CHANGED,self.browser_changed)
-    
+
     def btn_adddir_clicked(self,btn):
         entry = self.get_selected_entry()
         if entry != None and entry.isDir:

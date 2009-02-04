@@ -73,10 +73,8 @@ class MPlayer(object):
         cmd = '%s%s%s\n'%(name,
                 ' ' if args else '',
                 ' '.join(repr(a) for a in args)
-                )       
-        return self.innercmd(cmd,key,readall)
-         
-    def innercmd(self,cmd,key,readall):
+                )        
+        
         
         if readall:
             ret = []
@@ -91,7 +89,7 @@ class MPlayer(object):
             if key != None:
                 while any(select.select([self._mplayer.stdout.fileno()], [], [], 20)):
                     tmp = self._mplayer.stdout.readline()
-                    #print "MPLAYER:" + tmp.strip()
+                   # print "MPLAYER:" + tmp.strip()
                     if readall:
                         ret.append(tmp)
                         if tmp.startswith(key):

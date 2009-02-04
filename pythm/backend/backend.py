@@ -1,59 +1,174 @@
 from pythm.config import PythmConfig
 from threading import Thread,Lock
 import time
+import logging
+import dbus
+import e_dbus
+import ecore
+
+UPDATE_TIME = 0.1		# Time between update loops.
+RESUME_FROM_PHONE_TIME = 2	# Time before resuming after phone call suspend.
+
+logger = logging.getLogger("pythm")
+logging.basicConfig(level    = logging.CRITICAL,
+		    format   = '%(asctime)s %(levelname)s %(message)s',
+		    filename = '/tmp/pythm.log',
+		    filemode = 'w')
+logger.setLevel(logging.DEBUG)
 
 class StoppableThread(Thread):
     def __init__ (self):
         Thread.__init__(self)
         self.running = True
         self.stopped = True
+
     def run(self):
-        self.stopped = False
+        self.stopped 		= False
+	self.elapsedTime 	= 0.0
+	self.timeStart 		= time.time()
+	ecore.timer_add(UPDATE_TIME, self.update)
+	ecore.main_loop_begin()
+	# DMR old way of doing it.
+	"""
         while self.running == True:
-            self.doWork()
+	    timeStart = time.time()
+            self.do_work()
+	    self.elapsedTime = time.time() - timeStart
+	"""
         self.stopped = True
+ 
+    def update(self):
+	self.elapsedTime = time.time() - self.timeStart
+	self.timeStart = time.time()                                               
+        self.do_work()                              
+	ecore.timer_add(UPDATE_TIME, self.update)
         
     def stop(self):
+	ecore.main_loop_quit()
         self.running = False
-        while self.stopped == False:
-            time.sleep(0.1)
+        #while self.stopped == False:
+            #time.sleep(0.1)
 
+"""
+" checks the backend/playing state
+"""
 class StateChecker(StoppableThread):
-    """
-    checks the backend/playing state
-    """
     def __init__ (self,backend):
         StoppableThread.__init__(self)
         self.backend = backend
         
-    def doWork(self):
-        time.sleep(0.8)
-        if self.backend.is_connected():
-            self.backend.check_state()
+    """                                                                         
+    " Performs time based processing.                                           
+    """
+    def do_work(self):
+	# DMR old way of doing it.
+        #time.sleep(0.1)
 
+	# Must be connected to a back-end to bother performing                  
+        # these actions.                                                        
+        if (self.backend.is_connected()):                                               
+            self.backend.check_state(self.elapsedTime)                                  
+                                                                                
+            # Watch for being asked to asynchronously restart playback          
+            # after pause from incoming phone call.                             
+            if (self.backend.resumePhoneTimer > 0):                                     
+                self.backend.resumePhoneTimer -= self.elapsedTime                       
+                if (self.backend.resumePhoneTimer <= 0):                                
+                     self.backend.resume_from_phone()
+
+"""
+" Base class for all playing backends.
+"""
 class PythmBackend(object):
-    """Example backend"""
         
+    """
+    " initializes a new backend.
+    " eventhandler is a gui callback function that ensures that 
+    " the backend functions emit signals in the gui's thread.
+    """
     def __init__(self,name):
-        """
-        initializes a new backend.
-        eventhandler is a gui callback function that ensures that 
-        the backend functions emit signals in the gui's thread.
-        """
-        self.name = name
-        self.cfg = PythmConfig()
-        self.eventhandler = None
-        self.initialized = False
-        self.quiet = True
-        pass
+        self.name 		= name
+        self.cfg 		= PythmConfig()
+        self.eventhandler 	= None
+        self.initialized 	= False
+        self.quiet 		= True
+	self.sysbus 		= None
+	self.sesbus 		= None
+	self.mainloop 		= None
+	#self.elapsedTime 	= 0.0
+	self.resumePhoneTimer 	= 0.0
+
+	self.init_dbus()
+
+ 	pass
     
+    """
+    " Begin processing.
+    " Start main thread.
+    """
     def startup(self,handler):
-        self.statecheck = StateChecker(self)
-        self.initialized = True
-        self.eventhandler = handler
+        self.statecheck 	= StateChecker(self)
+        self.initialized 	= True
+        self.eventhandler 	= handler
         self.statecheck.start()
         return True
-    
+ 
+    """
+    " Initialze hooks into dbus.
+    " Gets the session and system bus references and adds
+    " a callback to watch for incoming calls.
+    """
+    def init_dbus(self):
+	try:
+	    self.mainLoop   = e_dbus.DBusEcoreMainLoop()
+            self.sysbus     = dbus.SystemBus(mainloop=self.mainLoop)
+            self.sesbus     = dbus.SessionBus(mainloop=self.mainLoop)
+
+	    if (self.sysbus == None or self.sesbus == None):
+		return
+
+	    """
+	    self.sysbus.add_signal_receiver(self.cb_idle,                      
+                        dbus_interface="org.freesmartphone.Device.IdleNotifier",  
+                        signal_name="State")
+	    """
+
+	    # Add a listener for changes to the GSM interface.
+	    self.sysbus.add_signal_receiver(self.cb_call_status,
+			dbus_interface="org.freesmartphone.GSM.Call",
+			signal_name="CallStatus",
+			path="/org/freesmartphone/GSM/Device",
+			bus_name="org.freesmartphone.ogsmd")
+
+	except dbus.DBusException, e:
+	    logger.warn("Could not connect to dbus.")
+
+    """
+    " Callback for when the GSM call state changes.
+    " when we get a call, pause playback if playing.
+    " When call ends, resume play back if paused from playing.
+    """
+    def cb_call_status(self, id, status, props):
+  	logger.debug("Phone call status changed to: %s." % status)
+
+        if status == "outgoing" or status == "active" or status == "incoming":
+	    logger.debug("Initiating playback pause for phone call state.") 
+	    if (self.state == State.PLAYING):
+		self.pause_for_phone()	
+        else:
+            if (self.state == State.PAUSED_PHONE): 
+		self._resume_from_phone()
+        return
+
+    """ 
+    " Callback for handling dbus on status changed events.
+    """
+    """ Test only.
+    def cb_idle( self, state):                                                     
+        print "In the method"                                                     
+        logger.error( "IDLE EVENT = %s" % state)
+    """
+
     def is_started(self):
         return self.initialized
         
@@ -65,7 +180,6 @@ class PythmBackend(object):
         
     def reconnect(self):
         self.quiet = False
-    
         
     def set_volume(self, newVol):
         """sets new volume"""
@@ -92,6 +206,26 @@ class PythmBackend(object):
     def pause(self):
         """pauses playback"""
         raise NotImplementedError()
+
+    """
+    " Called to pause playback when the phone is activated.
+    """
+    def pause_from_phone(self):
+	raise NotImplementedError()
+
+    """
+    " Called to resume playing when a phone call ends.
+    """
+    def resume_from_phone(self):
+	raise NotImplementedError()
+
+    """
+    " Private method to begin the resuming from a call process.
+    " Initiate a timed resume to give the system a chance to
+    " release the audio from the phone call.
+    """
+    def _resume_from_phone(self):
+	self.resumePhoneTimer = RESUME_FROM_PHONE_TIME
     
     def stop(self):
         """stops playback"""
@@ -147,7 +281,7 @@ class PythmBackend(object):
         """
         raise NotImplementedError("populate")
     
-    def check_state(self):
+    def check_state(self,elapsedTime):
         """callback of statechecker"""
         pass
     
@@ -199,13 +333,24 @@ class Signals:
     # COMMAND_STATE, true oder false
     COMMAND_STATE = "command_state"
         
-    
+"""
+" Posible play states.
+"""    
 class State:
     PLAYING = 0
     PAUSED = 1
     STOPPED = 2
     DISABLED = 3
+    PAUSED_PHONE = 4
 
+"""
+" Possible directions of track advancement.
+"""
+class PlayDirection:
+    CURRENT = 0
+    FORWARD = 1
+    BACKWARD = 2
+    RANDOM = 3
 
 class PlaylistEntry:
     def __init__(self, id, artist, title, length):

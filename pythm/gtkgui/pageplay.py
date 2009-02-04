@@ -9,6 +9,8 @@ from gtkhelper import ImageButton
 
 class PagePlay(Page):
     def __init__(self):
+	self.duration = 0.0
+
         Page.__init__(self);
         self.cfg.get_backend().connect(Signals.VOLUME_CHANGED,self.volume_changed)
         self.cfg.get_backend().connect(Signals.RANDOM_CHANGED,self.random_changed)
@@ -19,7 +21,7 @@ class PagePlay(Page):
         
         self.btn_prev = ImageButton(gtk.STOCK_MEDIA_PREVIOUS)
         self.btnbox.add(self.btn_prev)
-        self.btn_stop = ImageButton(gtk.STOCK_MEDIA_STOP)
+	self.btn_stop = ImageButton(gtk.STOCK_MEDIA_STOP)
         self.btnbox.add(self.btn_stop)
         self.btn_pause = ImageButton(gtk.STOCK_MEDIA_PAUSE)
         self.btnbox.add(self.btn_pause)
@@ -36,7 +38,7 @@ class PagePlay(Page):
         self.btn_pause.connect("clicked", self.btn_clicked)
         
         self.volevent = False
-
+ 
     def btn_clicked(self,widget):        
         if widget == self.btn_next:
             self.cfg.get_backend().next()
@@ -66,18 +68,22 @@ class PagePlay(Page):
 
     def song_changed(self,newplentry):
         self.songlabel.set_label(str(newplentry))
+	"""
         if newplentry.length > 0:
             self.pos_scale.set_range(0,newplentry.length)
+	"""
+	self.duration = newplentry.length
         self.pos_changed(0)
 
     def pos_changed(self,newPos):
         self.posevent = True
         newPos = int(newPos)
+	"""
         self.pos_scale.set_value(newPos)
-        lbl = format_time(newPos)
-        self.timelabel.set_label(lbl)
+	"""
+	self.set_times_label(newPos)
         self.posevent = False
-        
+
     def random_changed(self,newRand):
         self.random.set_active(newRand)
         
@@ -88,35 +94,49 @@ class PagePlay(Page):
         self.volevent = True
         self.vol_scale.set_value(newVolume)
         self.volevent = False
+
+    """
+    " Set the times label string based on current and
+    " total duration.
+    """
+    def set_times_label(self, position):
+	lbl = format_time(position) + " / " + format_time(self.duration)
+	self.timelabel.set_label(lbl)
     
     def content(self):
         #track info
         vbox = gtk.VBox()
         self.songlabel = gtk.Label("")
         vbox.pack_start(self.songlabel,True,True,0)
-        self.timelabel = gtk.Label("00:00")
+        self.timelabel = gtk.Label("0:00 / 0:00")
         vbox.pack_start(self.timelabel,True,True,0)
         
-        
+        """
         #pos slider
         hbox2 = gtk.HBox()
+	hbox2.set_border_width(10)
         hbox2.pack_start(gtk.Label("Pos."),False,False,0)
         self.pos_scale = gtk.HScale();
         self.pos_scale.set_property("draw-value",False)
+	self.pos_scale.set_value_pos(1)
         self.pos_scale.connect("value-changed",self.on_pos_change)
-        self.pos_scale.set_increments(5,20)
+        self.pos_scale.set_increments(5,10)
         self.pos_scale.set_update_policy(gtk.UPDATE_DISCONTINUOUS)
         hbox2.add(self.pos_scale)
         vbox.add(hbox2)
-        
+        """
+
         #volume,random,repeat
         hbox = gtk.HBox()
+	hbox.set_border_width(10)
         hbox.pack_start(gtk.Label("Vol."),False,False,0)
         self.vol_scale = gtk.HScale();
-        self.vol_scale.set_range(0,100)
-        self.vol_scale.set_property("draw-value",False)
+        self.vol_scale.set_range(50,100)
+        self.vol_scale.set_property("draw-value",True)
+	self.vol_scale.set_digits(0)
+	self.vol_scale.set_value_pos(1)
         self.vol_scale.connect("value-changed",self.on_volume_change)
-        self.vol_scale.set_increments(5,20)
+        self.vol_scale.set_increments(1,2)
         self.vol_scale.set_update_policy(gtk.UPDATE_DISCONTINUOUS)
         hbox.add(self.vol_scale)
         vbox.add(hbox)

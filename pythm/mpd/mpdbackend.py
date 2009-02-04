@@ -78,7 +78,22 @@ class MpdBackend(PythmBackend):
             self.mpd.play()
         else:
             self.mpd.playid(plid)
-        
+
+    """                                                                         
+    " Called to pause playback when the phone is activated.                     
+    """                                                                         
+    def pause_for_phone(self):                                                  
+        if (self.state == State.PLAYING):                                       
+            logger.debug("Pausing playback due to phone call.") 
+       	    self.mpd.pause(1) 
+
+    """                                                                         
+    " Called to resume playing when a phone call ends.                          
+    """                                                                         
+    def resume_from_phone(self):                                                
+        if (self.state == State.PAUSED_PHONE):                                  
+            logger.debug("Resuming playback.")
+	    self.mpd.pause(0)
     
     def next(self):
         """Next song in playlist"""
@@ -141,7 +156,7 @@ class MpdBackend(PythmBackend):
     def remove(self, plid):
         """removes entry from pl"""
         self.mpd.deleteid(plid)
-        self.check_state()
+        self.check_state(0.0)
     
     def up(self, plid):
         """moves plentry up"""
@@ -150,7 +165,7 @@ class MpdBackend(PythmBackend):
             if idx > 0:
                 swapid = self.playlist[idx - 1].id
                 self.mpd.swapid(plid,swapid)
-                self.check_state()
+                self.check_state(0.0)
                 
     
     def down(self, plid):
@@ -160,7 +175,7 @@ class MpdBackend(PythmBackend):
             if idx+1 < len(self.playlist):
                 swapid = self.playlist[idx + 1].id
                 self.mpd.swapid(plid,swapid)
-                self.check_state()
+                self.check_state(0.0)
 
     
     def get_plid_index(self,plid):
@@ -249,7 +264,7 @@ class MpdBackend(PythmBackend):
         self.volume = None
         self.state = None
         self.song = None
-        self.check_state()
+        self.check_state(0.0)
         self.browse()
         
     def browse_up(self,current_dir):
@@ -259,12 +274,12 @@ class MpdBackend(PythmBackend):
     
     def clear(self):
         self.mpd.clear()
-        self.check_state()
+        self.check_state(0.0)
     
     def add_dir(self,dir):
         self.add(dir)
             
-    def check_state(self):
+    def check_state(self, elapsedTime):
         try:
             if self.mpd != None:
                 status = self.mpd.status()

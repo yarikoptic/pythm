@@ -31,7 +31,7 @@ class PythmConfig(ConfigParser):
     def initialize_backends(self):
         defaultbackend = self.get("pythm","backend",None)
         print "using " + str(defaultbackend) + " backend"
-        backends = self.get_commaseparated("pythm","backends","mpd,mplayer")
+        backends = self.get_commaseparated("pythm","backends","mpd,mplayer,gstreamer")
         for b in backends:
             try:
                 module = self.my_import("pythm."+b)
@@ -39,8 +39,8 @@ class PythmConfig(ConfigParser):
                 self.backends.append(instance)
                 if b == defaultbackend:
                     self.backend = instance
-            except:
-                print "could not load backend" + b
+            except Exception,e:
+                print "Could not load backend: " + b + ": %s" % str(e)
         
     def my_import(self,name):
         mod = __import__(name)

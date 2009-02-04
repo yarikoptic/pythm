@@ -13,8 +13,8 @@ def is_numeric(val):
 def format_time(value):
     if value < 0:
         return ""
-    min = int(round(value / 60))
-    sec = int(round(value % 60))
+    min = int(value / 60)
+    sec = int(value) % 60
     if sec < 10:
         sec = "0" + str(sec)
     return str(min) + ":" + str(sec)

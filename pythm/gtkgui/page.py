@@ -14,7 +14,7 @@ class Page(gtk.VBox):
         self.btnbox = gtk.HBox()
         self.pack_start(self.btnbox,False,False,0)
         self.set_sensitive(False)
-        self.cmdimg = gtk.image_new_from_stock(gtk.STOCK_NETWORK, gtk.ICON_SIZE_BUTTON)
+        self.cmdimg = gtk.image_new_from_stock(gtk.STOCK_NETWORK, gtk.ICON_SIZE_LARGE_TOOLBAR)
         self.cmdimg.set_padding(3,3)
         self.cmdimg.set_sensitive(False)
         self.btnbox.pack_start(self.cmdimg,False,False,0)

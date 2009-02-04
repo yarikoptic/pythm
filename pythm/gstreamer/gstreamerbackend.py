@@ -1,14 +1,15 @@
-from pythm.backend import *
-import os
-import re
-import sys
+import os, re, sys, time
 import alsaaudio
 import ecore.evas
-import time
 import dbus
-from mplayer import MPlayer
+import pygst, gst
+from pythm.backend import *
 from threading import Thread, Lock
-from ID3 import *
+#from ID3 import *
+from mutagen.easyid3 import EasyID3
+from mutagen.mp3 import MP3
+from mutagen.oggvorbis import OggVorbis
+from mutagen.flac import FLAC
 from pythm.functions import is_numeric
 from dbus.exceptions import DBusException
 
@@ -16,52 +17,72 @@ from dbus.exceptions import DBusException
 ALSA_POLL_TIME = 3
 # Name of the alsa mixer channel to contol.
 ALSA_MIXER_NM = 'PCM'
-# Time (seconds) between mplayer polls.
-MLPAYER_POLL_TIME = 0.8
-
-class InfoRetriever(StoppableThread):
-    def __init__(self):
-        StoppableThread.__init__(self,backend)
-        self.backend = backend
-        self.work = []
-        pass
-    def add(self,entry):
-        self.work.append(entry)
-
-    def doWork(self):
-        time.sleep(1)
-        if len(self.work) > 0:
-            for entry in self.work:
-                pass
-                pass
-
+# Time between playback time updates.
+PLAYBACK_POLL_TIME = 0.8
+# Time between async loader thread firing.
+ASYNC_POLL_TIME = 1.0
+# Time after a song starts that we wait before letting the
+# async load thread load a new song.
+ASYNC_LOAD_WAIT_TIME = 3.5
+# Time to add to elapsed time when determining if song is over.
+# This is to get a smooth transition.
+NEXT_SONG_FUDGE_TIME = 0.25
+# Audio file artist tag name.
+TAG_NAME_ARTIST = "artist"
+# Audion file album tag name.
+TAG_NAME_TITLE = "title"
+# File extension for mp3 files.
+FILE_EXT_MP3 = ".mp3"
+# File extension for ogg files.
+FILE_EXT_OGG = ".ogg"
+# File extension for flac files.
+FILE_EXT_FLAC = ".flac"
 
 """
-" Backend for mplayer control
+" A thread for loading the next track in the background.
+" All it does is call async_load_thread in the main backend
+" class every so often.
+"""
+class AsyncLoader(Thread):
+    def __init__(self, backend):
+	Thread.__init__(self)
+	self.backend = backend
+	self.running = True	
+
+    def run(self):
+	while(self.running):
+	    self.backend.async_load_thread(ASYNC_POLL_TIME)
+	    time.sleep(ASYNC_POLL_TIME)
+
+"""
+" Backend for gstreamer control
 " Provides basic Player usage and file browsing.
 """
-class MplayerBackend(PythmBackend):
+class GStreamerBackend(PythmBackend):
 
     """
     " Constructor.
     """
     def __init__(self):
-	self.mixer	 = None
-	self.lastVolume  = 0
-	self.volTimer	 = 0
-	self.oldLockTime = -1
-	self.illumeRef	 = None
-	self.songTimer	 = 0
-	self.songLength	 = 0
-	self.pollTimer	 = 0
-	self.songChanged = False	# Flag for async song changed signal emmitt.
+	self.mixer	    = None
+	self.lastVolume     = 0
+	self.volTimer	    = 0
+	self.oldLockTime    = -1
+	self.illumeRef	    = None
+	self.songTimer	    = 0
+	self.songLength	    = 0
+	self.pollTimer	    = 0
+	self.songChanged    = False	# Flag for async song changed signal emmitt.
+	self.players	    = [None, None] # Gstreamer players.
+	self.songIds        = [None, None] # ID's of songs currenlty loaded into their respective players.
+	self.curPlayer	    = 0		# Current player being played.
+	self.threadLoad     = None	# Thread for background loading of next song.
+	self.asyncLoadTime  = -1	# Time before async load of next song starts.
 
-        PythmBackend.__init__(self,"mplayer")
+        PythmBackend.__init__(self,"gstreamer")
 
     def startup(self,handler):
         try:
-            self.lock = Lock()
-
             self.current = None
             self.first = None
             self.last = None
@@ -76,29 +97,52 @@ class MplayerBackend(PythmBackend):
 	    # Hook into DBUS.
 	    self.my_init_dbus() 
 
-	    # Bind to mplayer.
-            renice = self.cfg.get("mplayer","renice",None)
-            self.mplayer = MPlayer(renice)
-            endings = self.cfg.get("mplayer","endings","ogg,mp3")
+	    # Load file browser preferences.
+            endings = self.cfg.get("gstreamer","endings","ogg,mp3")
             self.endings = endings.lower().split(",")
-
-            self.filters  = self.cfg.get_array("mplayer","filters")
-            
+            self.filters  = self.cfg.get_array("gstreamer","filters")
             self.filematchers = []
             self.filematchers.append(".*-(?P<artist>.*)-(?P<title>.*)\..*") 
             self.filematchers.append("(?P<artist>.*)-(?P<title>.*)\..*") 
             self.filematchers.append("(?P<title>.*)\..*")
 
-	    # Init the connection to dbus for suspend time read/write.
+	    # Init gstreamer.
+	    self.gstreamer_init()
 
-            return PythmBackend.startup(self,handler)
+	    # Start the next song background loader.
+	    self.threadLoad = AsyncLoader(self)
+	    self.threadLoad.start()
+
+	    # Tell pythm we have loaded successfully.
+	    return PythmBackend.startup(self,handler)
+
         except Exception,e:
-            logger.error("could not start mplayer %s " % str(e))
+            logger.error("Error initializing gstreamer backend: %s " % str(e))
             return False
 
-    def cbIdle( self, state):
-	print "In the method"
-    	logger.error( "IDLE EVENT = %s" % state)
+    """
+    " Initialize the gstreamer player.
+    """
+    def gstreamer_init(self):
+	try:
+	    # Init gstreamer.                                                                   
+            self.players[0] = gst.element_factory_make("playbin", "pythm-player")                   
+            self.players[1] = gst.element_factory_make("playbin", "pythm-player")                   
+            #fakesink       = gst.element_factory_make("fakesink", "pythm-fakesink")                   
+	    # No video so use a fake sink.
+            #self.players[0].set_property("video-sink", fakesink)                                  
+            #self.players[1].set_property("video-sink", fakesink)                                  
+
+            streamerBus = self.players[0].get_bus()                                                 
+            streamerBus.add_signal_watch()                                                      
+            streamerBus.connect("message", self.on_player_message, 0)
+
+            streamerBus = self.players[1].get_bus()                                                 
+            streamerBus.add_signal_watch()                                                      
+            streamerBus.connect("message", self.on_player_message, 1)
+
+	except Exception,e:
+	    logger.error("Could not connect to gstreamer: %s" % str(e))
 
     """
     " Initialize the connection with the alsa system and
@@ -137,13 +181,13 @@ class MplayerBackend(PythmBackend):
     " Bind top dbus to do certain things.
     """
     def my_init_dbus(self):
-	"""
         if (self.sysbus == None or self.sesbus == None):
 		return
 
 	# Add a listener for changes to the GSM interface.
 	try:
-        	self.sysbus.add_signal_receiver(self.cbCallStatus,
+		"""
+        	self.sysbus.add_signal_receiver(self.cb_call_status,
                 	"CallStatus",
                         "org.freesmartphone.GSM.Call",
                         "org.freesmartphone.ogsmd",
@@ -156,17 +200,17 @@ class MplayerBackend(PythmBackend):
                 #idle = self.dbus.get_object("org.freesmartphone.odeviced", "/org/freesmartph
                 #self.dbusIdle = dbus.Interface(idle, "org.freesmartphone.Device.Input")
                 #self.dbusIdle.connect_to_signal("Event", self.cbIdle)
-                self.sysbus.add_signal_receiver(self.cbIdle,
+		"""
+                self.sysbus.add_signal_receiver(self.cb_idle,
                         dbus_interface="org.freesmartphone.Device.IdleNotifier",
                         signal_name="State")
         except DBusException, e:
                 logger.error("Failed to add listener for GSM events.")
 
-	"""
 
 	# If not set in the config file to explicitly no disable suspend while
 	# plaing, setup the interface to do so.
-	noSuspend = self.cfg.get("mplayer", "no_suspend", "true")
+	noSuspend = self.cfg.get("gstreamer", "no_suspend", "true")
 	if (noSuspend == "true"):
 	    try:
  	        dbusName  	= "org.enlightenment.wm.service"
@@ -202,6 +246,86 @@ class MplayerBackend(PythmBackend):
 	#newTime = self.illumeRef.AutosuspendTimeoutGet()
 	#print "New suspend time: " + str(newTime)
 
+    """                                                                
+    " Callback for handling dbus on status changed events.
+    """                            
+    def cb_idle(self, state):                                                 
+        #logger.error( "IDLE EVENT = %s" % state)
+	if (state == "suspend"):
+	    #logger.info("Got suspend state.")
+	    #self.stop()
+	    pass
+	elif (state == "awake"):
+	    #logger.info("Got awake state.")
+	    #self.gstreamer_init()
+	    pass
+	    
+
+    """
+    " Listen for messages from gstreamer.
+    """
+    def on_player_message(self, bus, msg, playerId):
+	t = msg.type
+	player = self.players[playerId]
+
+	#print "*** Message for " + str(playerId) + ": " + str(msg)
+
+	if (t == gst.MESSAGE_STATE_CHANGED):
+	    newState = msg.parse_state_changed()[1]
+	    #print "*** State changed message: " + str(newState)
+		
+	    # Actions to performe when the stream is ready.
+	    #if (newState == gst.STATE_READY):
+
+	# End of the stream. Play the next song.
+	elif (t == gst.MESSAGE_EOS):
+	    logger.debug("Got EOS message for player: %i" % playerId)
+	    player.set_state(gst.STATE_NULL)
+	elif (t == gst.MESSAGE_EOS and playerId == self.curPlayer):
+	    #self.next()
+	    pass
+
+	# Error message.
+	elif (t == gst.MESSAGE_ERROR):
+	    err, debug = message.parse_error()
+	    logger.error("Gstreamer error %s" % err, debug)
+
+    """
+    " Check for a the need to load a new song and then load it into
+    " the current inactive player.
+    """
+    def async_load_thread(self, elapsedTime):
+	if (self.asyncLoadTime > 0):
+	    self.asyncLoadTime -= elapsedTime
+	    if (self.asyncLoadTime < 0): self.asyncLoadTime = 0
+
+	if (self.asyncLoadTime != 0): return
+	self.asyncLoadTime = -1
+
+	nextPId = self.get_next_player_id()
+	
+	if (self.songIds[nextPId] == None):
+	    nextSong = self.choose_song(PlayDirection.FORWARD)
+
+	    try:
+		logger.debug("Async loading new song into player: %i" % nextPId)
+		logger.debug("Async next song is: %s" % str(nextSong[1].id))
+
+		self.players[nextPId].set_state(gst.STATE_NULL)
+		self.load_song(nextPId, nextSong[1])
+		self.songIds[nextPId] = nextSong[1].id
+
+	    except Exception,e:
+		logger.error("Failed to async load song: %s" % str(e))
+	
+    """
+    " Returns the next gstreamer player id.
+    " We have two players so the next song can be asynchronously
+    " loaded into memory.
+    """
+    def get_next_player_id(self):
+	return (self.curPlayer + 1) % 2
+
     """
     " Set to play songs in a random order.
     " Fires the random state changed signal.
@@ -218,79 +342,191 @@ class MplayerBackend(PythmBackend):
         self.repeat = rept
         self.emit(Signals.REPEAT_CHANGED,rept)
     
+    """
+    " Load song with the given id into the given gstreamer
+    " player. If song is loaded successfully, sets player
+    " ready state.
+    " Returns true if load successful.
+    """
+    def load_song(self, playerId, songEntry):
+	# Sent the song id of the song to load as empty until
+	# it has been successfully loaded.
+	self.songIds[playerId] = None
+
+	player = self.players[playerId]
+
+	try:
+	    fn = songEntry.id
+	    player.set_state(gst.STATE_NULL)
+	    player.set_property("uri", "file://" + fn)
+	    player.set_state(gst.STATE_PLAYING)
+
+	    if (songEntry.length <= 0):
+	    	songEntry.length = self.get_length_retry(self.players[playerId])
+
+	    player.set_state(gst.STATE_PAUSED)
+
+	    # Now remember the song ID.
+	    self.songIds[playerId] = fn
+	    return True
+
+	except Exception,e:
+	    logger.error("Error loading song %s into player %i: %s" % 
+		(str(songEntry), playerId, str(e)))
+	    return False
     
     """
-    " Plays a song from the playlist or starts playing of pleid=None
-    " Does not perform a lock. Locks should be handled in invoking
-    " methods.
+    " Plays a song from the playlist.
     """
-    def play(self, plid=None):
+    def play(self, plid=None, stopCurrent = True):
+	entryState = self.state
+
+	# Default state to stopped so main update loop will
+	# stop drawing somg timer until after new song is
+	# loaded.
+	self.state = State.STOPPED
+
 	# Disable device suspend while playing.
 	self.config_set_suspend(1)
 	
 	# If paused, simply resume playing.
-        if (self.state == State.PAUSED):
-            self.mplayer.command("pause")
+        if (entryState == State.PAUSED):
+	    self.players[self.curPlayer].set_state(gst.STATE_PLAYING)
             self.set_state(State.PLAYING)
 
 	# Check these states only State.PHONE_PAUSED
 	# has special handling.
 	elif (self.state == State.STOPPED or self.state == State.PLAYING):
-	    # Default state to stopped so main update loop will
-	    # stop drawing somg timer until after new song is
-	    # loaded.
-	    self.state = State.STOPPED
-	    #self.mplayer.command("pause")
+	    # If no track given as argument, select the next track.
+            if (plid == None):
+		songToPlay = self.choose_song()
+	    else:
+		songToPlay = self.entrydict[plid]
 
-            if (plid != None):
-                self.choose_song(plid)
+	    logger.debug("Going to play song: %s" % songToPlay[1].id)
+	    self.emit(Signals.SONG_CHANGED, songToPlay[1])
 
-            if (self.current != None):
-                entry 	= self.current[1]
-                fn 	= entry.id
-                #self.emit(Signals.SONG_CHANGED,entry)
-
-		# DMR using arraycmd here takes mucho tiempo and
-		# the song title information has already been
-		# received from ID3 on playlist load.
-                #array = self.mplayer.arraycmd("loadfile","======",fn)
-                #self.fill_entry(array, entry)
-		self.mplayer.command("loadfile", fn)
-                entry.length = self.mplayer.cmd("get_time_length","ANS_LENGTH")
-		
-		""" DMR don't think we need this.
-		retry = 0
-		while (entry.length == -1 and retry < 5):
-                    entry.length = self.mplayer.cmd("get_time_length","ANS_LENGTH")
-		    if entry.length == -1:
-			time.sleep(0.25)
-		    retry += 1
-		"""
-
-		# DMR old way of doing things.
-		#self.songstart = time.time
-                #self.songend 	= self.songstart + entry.length
-
-		self.songTimer 	= 0
-		self.songLength = entry.length
-                self.emit(Signals.SONG_CHANGED,entry)
-                self.set_state(State.PLAYING)
-    
-    def choose_song(self,plid = None):
-        if self.current is None:
-            self.current = self.first
-            
-        if plid != None:
-            self.current = self.entrydict[plid]
-            
-        if self.state == State.PLAYING:
 	    try:
-		self.lock.acquire()
-            	self.play()
-	    except:
-		logger.error("Unable to play chosen song.")
 
-	    self.lock.release()
+		if (stopCurrent): self.players[self.curPlayer].set_state(gst.STATE_NULL)
+
+	    	# New song to play is same a current song (e.g., repeat)
+	    	# so restart current song without loading.
+	    	if (songToPlay[1].id == self.songIds[self.curPlayer]):
+		    self.players[self.curPlayer].set_state(gst.STATE_PLAYING)	
+
+	    	# Otherwise, play the selected song.
+            	elif (songToPlay != None):
+		    player  = None
+		    nextPId = self.get_next_player_id()
+
+		    #print "*** current id: " + str(self.curPlayer) + ", next: " + str(nextPId)
+		    #print "*** song in next player: " + str(self.songIds[nextPId])
+
+		    # Stop any asynchronous loading while we work.
+		    self.asyncLoadTime = -1
+
+		    # First, see if the song that was asynchronously loaded
+		    # into the next player is the song we want to play.
+		    # In this case, we switch players.
+		    if (self.songIds[nextPId] == songToPlay[1].id):
+			logger.debug("Song already loaded.")
+		    	self.curPlayer = nextPId
+			player = self.players[self.curPlayer]
+			player.set_state(gst.STATE_PLAYING)
+
+		    # Otherwise, we need to load the new song here.
+		    # The current player is kept in this case.
+		    # There is no need to switch.
+		    else:
+			logger.debug("Need to load the song.")
+			player = self.players[self.curPlayer]
+			
+			if (self.load_song(self.curPlayer, songToPlay[1])):
+		    	    player.set_state(gst.STATE_PLAYING)
+
+		    # Regardless, set the new current song.
+		    self.current = songToPlay
+
+		    # And stimulate the async. loading of the next song.
+		    self.songIds[self.get_next_player_id()] = None
+		    self.asyncLoadTime = ASYNC_LOAD_WAIT_TIME
+
+		self.songTimer  = 0
+		self.songLength = self.current[1].length
+            	self.emit(Signals.SONG_CHANGED, songToPlay[1])
+                self.set_state(State.PLAYING)
+
+	    except Exception, e:                                           
+            	logger.error("Error loading song: %s" % str(e))
+		if (player != None):
+		    player.set_state(gst.STATE_NULL)
+
+
+    """
+    " Gets the length of a song from a gstreamer player
+    " and allows for a few retries.
+    """
+    def get_length_retry(self, gplayer):
+	l	= 0
+	retries = 5
+
+	while (retries > 0):
+	    retries -= 1
+	    l = self.get_length(gplayer)
+	    if (l >= 0): break
+	
+	return l
+		
+    """
+    " Returns the song length from a gstreamer player.
+    """
+    def get_length(self, gplayer):
+	l = -1
+	try:
+	    l = gplayer.query_duration(gst.Format(gst.FORMAT_TIME), None)[0]
+	    # Time is in nanoseconds.
+	    l = float(l / 1000000000)
+	except Exception,e:
+	    logger.error("Error getting song length: %s" % str(e))
+	
+	return l
+
+    """
+    " Returns the current position from a gstreamer player.
+    " Returns -1 if there was an error getting the current position.
+    """
+    def get_position(self, gplayer):
+    	p = -1
+	try:
+	    p = gplayer.query_position(gst.Format(gst.FORMAT_TIME), None)[0]
+	    # Time is in nanoseconds.
+	    p = float(p / 1000000000)
+	except:
+	    p = -1
+
+	return p
+   
+    """
+    " Determines what the next song should be and returns
+    " that song entry.
+    """
+    def choose_song(self, dir = PlayDirection.CURRENT):
+        if (self.current is None):
+            nextSong = self.first
+	# If repeating, use same song.
+	elif (self.repeat or dir == PlayDirection.CURRENT):
+	    nextSong = self.current
+	elif (dir == PlayDirection.FORWARD):
+	    nextSong = self.current[2]
+	    if (nextSong == None):
+		nextSong = self.first
+	elif (dir == PlayDirection.BACKWARD):
+	    nextSong = self.current[0]
+	    if (nextSong == None):
+		nextSong = self.last
+
+	return nextSong
    
     """
     " Sets our state and emits a state changed signal.
@@ -302,24 +538,16 @@ class MplayerBackend(PythmBackend):
     """
     " Next song in playlist
     """
-    def next(self):
-        if self.current == None:
-            self.choose_song()
-        else:
-            if self.current[2] != None:
-                self.choose_song(self.current[2][1].id)
-            elif self.repeat:
-                self.choose_song(self.first[1].id)
+    def next(self, stopCurrent = True):
+	nextSong = self.choose_song(PlayDirection.FORWARD)
+	self.play(nextSong[1].id, stopCurrent)
     
     """
     " Previous song in Playlist
     """
     def prev(self):
-        if self.current != None:
-            if self.current[0] != None:
-                self.choose_song(self.current[0][1].id)
-            elif self.repeat:
-                self.choose_song(self.last[1].id)
+	nextSong = self.choose_song(PlayDirection.BACKWARD)
+	self.play(nextSong[1].id)
     
     """
     " pauses playback
@@ -329,13 +557,11 @@ class MplayerBackend(PythmBackend):
 	self.config_set_suspend(0)
 
         try:
-            self.lock.acquire()
-            if self.state == State.PLAYING:
-                self.mplayer.command("pause")
+            if (self.state == State.PLAYING):
+                self.players[self.curPlayer].set_state(gst.STATE_PAUSED)
                 self.set_state(State.PAUSED)
         except:
             pass
-        self.lock.release()
     
     """
     " stops playback
@@ -345,13 +571,11 @@ class MplayerBackend(PythmBackend):
 	self.config_set_suspend(0)
 
         try:
-            self.lock.acquire()
-            if self.state == State.PLAYING:
-		self.mplayer.command("stop")
+            if (self.state == State.PLAYING):
+		self.players[self.curPlayer].set_state(gst.STATE_READY)
             self.set_state(State.STOPPED)
         except:
             pass
-        self.lock.release()
 
     """
     " Called to pause playback when the phone is activated.
@@ -362,16 +586,10 @@ class MplayerBackend(PythmBackend):
 		% self.songTimer)
 
 	    try:
-		self.lock.acquire()
-		
-		# Use stop because the phone gets /dev/dsp lock.
-		# See resume_from_call().
-	    	self.mplayer.command("stop")
+	    	self.players[self.curPlayer].set_state(gst.STATE_PAUSED)
             	self.set_state(State.PAUSED_PHONE)
 	    except:
 		logger.error("Failed to pause playback for phone call.")
-
-	    self.lock.release()
 
     """
     " Called to resume playing when a phone call ends.
@@ -381,23 +599,10 @@ class MplayerBackend(PythmBackend):
 	    logger.debug("Resuming playback at time %i." % self.songTimer)
 
 	    try:
-		self.lock.acquire()
-
-		# Manually re-load the file into mplayer.
-		# Need to do a loadfile since the phone will grab /dev/dsp
-		# and we need to get it back.
-		# Do not use self.play() to remove the overhead of
-		# redrawing the UI for a new song.
-		entry = self.current[1]
-		self.mplayer.command("loadfile", entry.id)
-
-		# Seek to where we last left off (done b/c of song reload).
-	    	self.mplayer.command("seek", self.songTimer, 2)
+		self.players[self.curPlayer].set_state(gst.STATE_PLAYING)
             	self.set_state(State.PLAYING)
 	    except:
 		logger.error("Error resuming playback after phone call.")
-
-	    self.lock.release()
 
     """
     " fills entry with track data
@@ -416,7 +621,7 @@ class MplayerBackend(PythmBackend):
     """
     def browse(self,parentDir=None):
         if parentDir is None:
-            parentDir = os.path.expanduser(self.cfg.get("mplayer","musicdir","~"))
+            parentDir = os.path.expanduser(self.cfg.get("gstreamer","musicdir","~"))
         ret = []        
         
         if parentDir != "/":
@@ -462,10 +667,11 @@ class MplayerBackend(PythmBackend):
         fn = os.path.basename(beId)
         tpl = self.get_data(fn)
         entry = PlaylistEntry(beId,tpl[0],tpl[1],-1)
+	entry.length = 0
         
         if self.first == None:
             self.first = [None,entry,None]
-            self.current = self.first
+            #self.current = self.first
             self.last = self.first
         else:
             oldlast = self.last
@@ -475,11 +681,21 @@ class MplayerBackend(PythmBackend):
         
         self.entrydict[entry.id] = self.last
        
+	# Get audio file information from mutagen.
 	try:
-	    id3info = ID3(beId)
-	    entry.artist = id3info['ARTIST']
-	    entry.title = id3info['TITLE']
-	except InvalidTagError, e:
+	    ext   = os.path.splitext(beId)[1].lower()
+	    audio = None
+
+	    if   (ext == FILE_EXT_MP3):	 audio = MP3(beId, ID3=EasyID3)
+	    elif (ext == FILE_EXT_OGG):  audio = OggVorbis(beId)
+	    elif (ext == FILE_EXT_FLAC): audio = FLAC(beId)
+
+	    if (audio != None):
+		entry.artist = audio[TAG_NAME_ARTIST][0]
+		entry.title  = audio[TAG_NAME_TITLE][0]
+		entry.length = audio.info.length
+
+	except Exception, e:
 	    logger.warn("Invalid ID3 tag: %s" % e)
 
         self.emit_pl_changed()
@@ -561,9 +777,9 @@ class MplayerBackend(PythmBackend):
     " seeks to pos in seconds
     """
     def seek(self,pos):
-        if self.state == State.PLAYING:
+        if (self.state == State.PLAYING):
             self.songend = time.time() + (self.current[1].length - pos)
-            self.mplayer.command("seek",pos,2)
+            #self.mplayer.command("seek",pos,2)
     
     """
     " shuts down backend
@@ -574,7 +790,9 @@ class MplayerBackend(PythmBackend):
 
         try:
             PythmBackend.shutdown(self)
-            self.mplayer.quit()
+	    self.threadLoad.running = False
+	    self.players[0].set_state(gst.STATE_NULL)
+	    self.players[1].set_state(gst.STATE_NULL)
         except:
             pass
         
@@ -629,45 +847,32 @@ class MplayerBackend(PythmBackend):
 	
         try:
             if (self.state == State.PLAYING):
-		posValid = 1
-		pos	 = 0
 
 		self.songTimer += elapsedTime
 		self.pollTimer += elapsedTime
 
 		#print "Elapsed: " + str(elapsedTime) + " poll: " + str(self.pollTimer)
 
-		#length  = self.mplayer.cmd("get_time_length","ANS_LENGTH")
-		#pos 	 = self.mplayer.cmd("get_time_pos",'ANS_TIME_POS')
-		#percent = self.mplayer.cmd("get_percent_pos", "ANS_PERCENT_POSITION")
+		# Only signal that time changed every so often to reduce
+		# gui changes.
+		if (self.pollTimer >= PLAYBACK_POLL_TIME):
+		    # Attempt to sync up elapsed time with gstreamer.
+		    p = self.get_position(self.players[self.curPlayer])
+		    if (p > -1): self.songTimer = p
 
-		# Only update by polling mplayer for the current
-		# position every so often.
-		if (self.pollTimer >= MLPAYER_POLL_TIME):
 		    self.emit(Signals.POS_CHANGED, self.songTimer)
-		    #print "Song time: " + str(self.songTimer)
+
+		    #print "Song time: " + str(self.songTimer)  + ", song length: " + str(self.songLength)
 		    self.pollTimer = 0
 
-		    """
-            	    self.lock.acquire()
-		    self.pollTimer = 0
-		    pos = self.mplayer.cmd("get_time_pos",'ANS_TIME_POS')	
-		    self.lock.release()
-
-		    #print "Pos: " + str(pos)
-
-		    if (pos != None and is_numeric(pos)):
-                    	self.emit(Signals.POS_CHANGED, pos)
-		    else:
-		    	posValid = 0
-		    """
 		# Use the timer to determine if a song has ended 
-		# and advance to the next.
-		if (self.songTimer >= self.songLength + 0.05 or posValid == 0):
-                    self.next()
-        except:
-            logger.error("Unexpected error in check_state: %s"
-			 % sys.exc_info()[0])
+		# and advance to the next. Do not stop the current song
+		# just yet for a smooth cross fade.
+		if (self.songTimer + elapsedTime + NEXT_SONG_FUDGE_TIME >= self.songLength):
+                    self.next(False)
+
+        except Exception,e:
+            logger.error("Unexpected error in check_state: %s" % str(e))
                                                                                 
     """
     " Populate sets default player settings at start time.

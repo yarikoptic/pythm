@@ -3,10 +3,11 @@
 
 [pythm]
 # backends to show in backend list
-backends=mpd,mplayer
+backends=mpd,mplayer,gstreamer
 # the default backend to use, can be either
 # mpd or mplayer, or omitted
-#backend=mpd
+backend=gstreamer
+#backend=mplayer
 
 # mpd specific settings
 [mpd]
@@ -20,13 +21,34 @@ port=6600
 # mplayer settings
 [mplayer]
 # renice val for mplayer process
-renice=19
+renice=-8
+# Disable changing the device suspend state by setting to false.
+no_suspend=true
 
 # directory containing music (the start folder for the browser)
-musicdir=~
+musicdir=/media/card/Music/Albums
 # allowed file endings in browse mode, comma separated
 endings=ogg,mp3
 # filters to exclude in file browser. applied to files and directories
 # using regular expressions. use filtersN for more entries
 # default is to ignore all elements that start with a ".".
 filters0=\..*
+filters1=*.jpg
+filters2=*.png
+
+# gstreamer settings                         
+[gstreamer]                                  
+# Disable changing the device suspend state by setting to false.
+no_suspend=true                                                 
+                                                                
+# directory containing music (the start folder for the browser) 
+musicdir=/media/card/Music/Albums                               
+# allowed file endings in browse mode, comma separated          
+endings=ogg,mp3                                                 
+# filters to exclude in file browser. applied to files and directories
+# using regular expressions. use filtersN for more entries            
+# default is to ignore all elements that start with a ".".            
+filters0=\..*                                                         
+filters1=*.jpg                                                        
+filters2=*.png
+
