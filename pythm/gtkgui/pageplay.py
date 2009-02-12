@@ -9,7 +9,8 @@ from gtkhelper import ImageButton
 
 class PagePlay(Page):
     def __init__(self):
-	self.duration = 0.0
+	self.duration = 0.0	  # Druation of current song.
+	self.doPosUpdates = True  # Set song position from backend in slider.
 
         Page.__init__(self);
         self.cfg.get_backend().connect(Signals.VOLUME_CHANGED,self.volume_changed)
@@ -68,19 +69,20 @@ class PagePlay(Page):
 
     def song_changed(self,newplentry):
         self.songlabel.set_label(str(newplentry))
-	"""
+	
         if newplentry.length > 0:
             self.pos_scale.set_range(0,newplentry.length)
-	"""
+	
 	self.duration = newplentry.length
         self.pos_changed(0)
 
     def pos_changed(self,newPos):
         self.posevent = True
         newPos = int(newPos)
-	"""
-        self.pos_scale.set_value(newPos)
-	"""
+	
+	# Set the new value in the controls.
+	if (self.doPosUpdates):
+            self.pos_scale.set_value(newPos)
 	self.set_times_label(newPos)
         self.posevent = False
 
@@ -111,20 +113,20 @@ class PagePlay(Page):
         self.timelabel = gtk.Label("0:00 / 0:00")
         vbox.pack_start(self.timelabel,True,True,0)
         
-        """
         #pos slider
         hbox2 = gtk.HBox()
-	hbox2.set_border_width(10)
-        hbox2.pack_start(gtk.Label("Pos."),False,False,0)
+	hbox2.set_border_width(20)
+        #hbox2.pack_start(gtk.Label("Pos."),False,False,0)
         self.pos_scale = gtk.HScale();
         self.pos_scale.set_property("draw-value",False)
 	self.pos_scale.set_value_pos(1)
+	self.pos_scale.connect("button-press-event", self.on_pos_press)
+	self.pos_scale.connect("button-release-event", self.on_pos_release)
         self.pos_scale.connect("value-changed",self.on_pos_change)
         self.pos_scale.set_increments(5,10)
         self.pos_scale.set_update_policy(gtk.UPDATE_DISCONTINUOUS)
         hbox2.add(self.pos_scale)
         vbox.add(hbox2)
-        """
 
         #volume,random,repeat
         hbox = gtk.HBox()
@@ -164,6 +166,22 @@ class PagePlay(Page):
         if self.volevent == False:
             self.cfg.get_backend().set_volume(range.get_value())
             
+
+    """
+    " Event when the position slider is touched.
+    " Set a flag to ignore position updates from the backend.
+    " Thise makes using the control easier.
+    """
+    def on_pos_press(self, widget, event):
+	self.doPosUpdates = False
+    
+    """
+    " Event when the position slider is released.
+    " Release position update ignore.
+    """
+    def on_pos_release(self, widget, event):
+	self.doPosUpdates = True
+
     def on_pos_change(self,range):
         if self.posevent == False:
             self.cfg.get_backend().seek(range.get_value())

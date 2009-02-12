@@ -78,6 +78,8 @@ class MpdBackend(PythmBackend):
             self.mpd.play()
         else:
             self.mpd.playid(plid)
+	    
+	self.set_state(State.PLAYING)
 
     """                                                                         
     " Called to pause playback when the phone is activated.                     
@@ -85,6 +87,7 @@ class MpdBackend(PythmBackend):
     def pause_for_phone(self):                                                  
         if (self.state == State.PLAYING):                                       
             logger.debug("Pausing playback due to phone call.") 
+	    self.set_state(State.PAUSED_PHONE)
        	    self.mpd.pause(1) 
 
     """                                                                         
@@ -93,6 +96,7 @@ class MpdBackend(PythmBackend):
     def resume_from_phone(self):                                                
         if (self.state == State.PAUSED_PHONE):                                  
             logger.debug("Resuming playback.")
+	    self.set_state(State.PLAYING)
 	    self.mpd.pause(0)
     
     def next(self):
@@ -106,13 +110,16 @@ class MpdBackend(PythmBackend):
     def pause(self):
         """pauses playback"""
         if self.state == State.PAUSED:
+	    self.set_state(State.PLAYING)
             arg = 0
         else:
+	    self.set_state(State.PAUSED)
             arg = 1
         self.mpd.pause(arg)
     
     def stop(self):
         """stops playback"""
+	self.set_state(State.STOPPED)
         self.mpd.stop()
     
     def browse(self, parentDir=None):
@@ -202,6 +209,9 @@ class MpdBackend(PythmBackend):
             pass
         
     def update_str_state(self,state):
+	# This is now handled by set_state in parent class.
+	pass
+	"""
         if state == "play":
             s = State.PLAYING
         elif state =="pause":
@@ -211,6 +221,7 @@ class MpdBackend(PythmBackend):
         if self.state != s:
             self.state = s
             self.emit(Signals.STATE_CHANGED,s)
+	"""
             
     def update_song(self,songid):
         if self.song != songid:
@@ -262,10 +273,11 @@ class MpdBackend(PythmBackend):
         self.playlistid = None
         self.playlist = []
         self.volume = None
-        self.state = None
         self.song = None
         self.check_state(0.0)
         self.browse()
+	
+	self.set_state(State.STOPPED)
         
     def browse_up(self,current_dir):
         if current_dir != None and current_dir != "":
@@ -289,8 +301,9 @@ class MpdBackend(PythmBackend):
                     self.update_repeat(int(status["repeat"])==1)                
                 if status.has_key("volume"):
                     self.update_volume(int(status["volume"]))                
-                if status.has_key("state"):
-                    self.update_str_state(status["state"])                
+		# This is now handled by set_state in parent class.
+                #if status.has_key("state"):
+                #    self.update_str_state(status["state"])                
                 if status.has_key("song"):
                     self.update_song(int(status["song"]))
                 if status.has_key("time"):

@@ -1,0 +1,5 @@
+#!/bin/sh
+/usr/bin/pythm-bin&
+renice -5 $!
+wait
+exit 0

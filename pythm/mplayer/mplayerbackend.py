@@ -5,12 +5,9 @@ import sys
 import alsaaudio
 import ecore.evas
 import time
-import dbus
 from mplayer import MPlayer
 from threading import Thread, Lock
-from ID3 import *
-from pythm.functions import is_numeric
-from dbus.exceptions import DBusException
+from pythm.functions import *
 
 # Time (seconds) to wait before polling alsa for the current volume.
 ALSA_POLL_TIME = 3
@@ -49,8 +46,6 @@ class MplayerBackend(PythmBackend):
 	self.mixer	 = None
 	self.lastVolume  = 0
 	self.volTimer	 = 0
-	self.oldLockTime = -1
-	self.illumeRef	 = None
 	self.songTimer	 = 0
 	self.songLength	 = 0
 	self.pollTimer	 = 0
@@ -71,10 +66,6 @@ class MplayerBackend(PythmBackend):
 
             self.random = False
             self.repeat = False
-            self.state = State.STOPPED
-
-	    # Hook into DBUS.
-	    self.my_init_dbus() 
 
 	    # Bind to mplayer.
             renice = self.cfg.get("mplayer","renice",None)
@@ -84,11 +75,6 @@ class MplayerBackend(PythmBackend):
 
             self.filters  = self.cfg.get_array("mplayer","filters")
             
-            self.filematchers = []
-            self.filematchers.append(".*-(?P<artist>.*)-(?P<title>.*)\..*") 
-            self.filematchers.append("(?P<artist>.*)-(?P<title>.*)\..*") 
-            self.filematchers.append("(?P<title>.*)\..*")
-
 	    # Init the connection to dbus for suspend time read/write.
 
             return PythmBackend.startup(self,handler)
@@ -132,75 +118,6 @@ class MplayerBackend(PythmBackend):
 	    self.mixer.setvolume(int(newVol))
 	    self.lastVolume = newVol
             self.emit(Signals.VOLUME_CHANGED,newVol)
-    
-    """
-    " Bind top dbus to do certain things.
-    """
-    def my_init_dbus(self):
-	"""
-        if (self.sysbus == None or self.sesbus == None):
-		return
-
-	# Add a listener for changes to the GSM interface.
-	try:
-        	self.sysbus.add_signal_receiver(self.cbCallStatus,
-                	"CallStatus",
-                        "org.freesmartphone.GSM.Call",
-                        "org.freesmartphone.ogsmd",
-                        "/org/freesmartphone/GSM/Device" )
-
-                #gsmDevice = self.dbus.get_object('org.freesmartphone.ogsmd', '/org/freesmart
-                #self.dbusPhone = Interface(gsmDevice, 'org.freesmartphone.GSM.Call')
-                #self.dbusPhone.connect_to_signal("Status", self.cbCallStatus)
-
-                #idle = self.dbus.get_object("org.freesmartphone.odeviced", "/org/freesmartph
-                #self.dbusIdle = dbus.Interface(idle, "org.freesmartphone.Device.Input")
-                #self.dbusIdle.connect_to_signal("Event", self.cbIdle)
-                self.sysbus.add_signal_receiver(self.cbIdle,
-                        dbus_interface="org.freesmartphone.Device.IdleNotifier",
-                        signal_name="State")
-        except DBusException, e:
-                logger.error("Failed to add listener for GSM events.")
-
-	"""
-
-	# If not set in the config file to explicitly no disable suspend while
-	# plaing, setup the interface to do so.
-	noSuspend = self.cfg.get("mplayer", "no_suspend", "true")
-	if (noSuspend == "true"):
-	    try:
- 	        dbusName  	= "org.enlightenment.wm.service"
-  	        dbusPath  	= "/org/enlightenment/wm/RemoteObject"
-	        dbusIface 	= "org.enlightenment.wm.IllumeConfiguration"
-	        eObj 	= self.sesbus.get_object(dbusName, dbusPath, introspect=False)
-	        self.illumeRef = dbus.Interface(eObj, dbus_interface=dbusIface)
-	        # Get the lock time when the app was started.
-	        self.oldLockTime = self.illumeRef.AutosuspendTimeoutGet()
-	        #logger.info("Old timeout time: %d" % self.oldLockTime)
-	    except:
-	        logger.error("Failed to obtain ref to illume configuration: %s" 
-			     % sys.exc_info()[1])
-
-    """
-    " Sets the suspend mode of the device to no suspend
-    " if state = 1 and to the original value if state = 0.
-    " This does nothing if the original suspend time was
-    " not correctly read.
-    """
-    def config_set_suspend(self, state):
-	# No valid old suspend time.
-	if (self.oldLockTime == -1):
-	    return
-	
-	# Restore old suspend time.
-	if (state == 0):
-	    self.illumeRef.AutosuspendTimeoutSet(int(self.oldLockTime))
-	# Set to no suspend.
-	else:
-	    self.illumeRef.AutosuspendTimeoutSet(0)
-
-	#newTime = self.illumeRef.AutosuspendTimeoutGet()
-	#print "New suspend time: " + str(newTime)
 
     """
     " Set to play songs in a random order.
@@ -225,9 +142,6 @@ class MplayerBackend(PythmBackend):
     " methods.
     """
     def play(self, plid=None):
-	# Disable device suspend while playing.
-	self.config_set_suspend(1)
-	
 	# If paused, simply resume playing.
         if (self.state == State.PAUSED):
             self.mplayer.command("pause")
@@ -291,13 +205,6 @@ class MplayerBackend(PythmBackend):
 		logger.error("Unable to play chosen song.")
 
 	    self.lock.release()
-   
-    """
-    " Sets our state and emits a state changed signal.
-    """ 
-    def set_state(self,newState):
-        self.state = newState
-        self.emit(Signals.STATE_CHANGED,newState)
     
     """
     " Next song in playlist
@@ -325,10 +232,7 @@ class MplayerBackend(PythmBackend):
     " pauses playback
     """
     def pause(self):
-	# Restore original suspend time when music is paused.
-	self.config_set_suspend(0)
-
-        try:
+	try:
             self.lock.acquire()
             if self.state == State.PLAYING:
                 self.mplayer.command("pause")
@@ -341,10 +245,7 @@ class MplayerBackend(PythmBackend):
     " stops playback
     """
     def stop(self):
-	# Restore original suspend time when music playing stops.
-	self.config_set_suspend(0)
-
-        try:
+	try:
             self.lock.acquire()
             if self.state == State.PLAYING:
 		self.mplayer.command("stop")
@@ -460,7 +361,7 @@ class MplayerBackend(PythmBackend):
     def add(self,beId):
         
         fn = os.path.basename(beId)
-        tpl = self.get_data(fn)
+        tpl = get_tags_from_file(fn)
         entry = PlaylistEntry(beId,tpl[0],tpl[1],-1)
         
         if self.first == None:
@@ -475,12 +376,8 @@ class MplayerBackend(PythmBackend):
         
         self.entrydict[entry.id] = self.last
        
-	try:
-	    id3info = ID3(beId)
-	    entry.artist = id3info['ARTIST']
-	    entry.title = id3info['TITLE']
-	except InvalidTagError, e:
-	    logger.warn("Invalid ID3 tag: %s" % e)
+	# Get audio file information from mutagen.                          
+        read_audio_tags(entry, logger)
 
         self.emit_pl_changed()
         
@@ -569,10 +466,7 @@ class MplayerBackend(PythmBackend):
     " shuts down backend
     """
     def shutdown(self):
-	# Restore original suspend time on shutdown.
-	self.config_set_suspend(0)
-
-        try:
+	try:
             PythmBackend.shutdown(self)
             self.mplayer.quit()
         except:
@@ -663,7 +557,7 @@ class MplayerBackend(PythmBackend):
 		    """
 		# Use the timer to determine if a song has ended 
 		# and advance to the next.
-		if (self.songTimer >= self.songLength + 0.05 or posValid == 0):
+		if (self.songTimer + 0.05 >= self.songLength or posValid == 0):
                     self.next()
         except:
             logger.error("Unexpected error in check_state: %s"

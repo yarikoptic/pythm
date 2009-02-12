@@ -9,6 +9,11 @@ backends=mpd,mplayer,gstreamer
 backend=gstreamer
 #backend=mplayer
 
+# Disable changing the device suspend state by setting to false.
+no_suspend=true    
+# Set which interface to use for disabling suspend. "fso" for frameworkd "e" for enlightenment.
+suspend_iface=fso
+
 # mpd specific settings
 [mpd]
 # mpd host
@@ -37,10 +42,7 @@ filters1=*.jpg
 filters2=*.png
 
 # gstreamer settings                         
-[gstreamer]                                  
-# Disable changing the device suspend state by setting to false.
-no_suspend=true                                                 
-                                                                
+[gstreamer]                                                                              
 # directory containing music (the start folder for the browser) 
 musicdir=/media/card/Music/Albums                               
 # allowed file endings in browse mode, comma separated          
