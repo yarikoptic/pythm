@@ -45,11 +45,11 @@ class MPlayer(object):
         args = [self.exe_name, '-slave', '-quiet', '-idle','-nolirc']
         self._mplayer = subprocess.Popen(args,
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=1)
-        
+
         if self._mplayer and niceval!=None:
             pid = self._mplayer.pid
             os.system("renice "+ str(niceval) +" -p "+str(pid))
-        
+
         self.lock = Lock()
 
     def command(self,cmd,*args):
@@ -57,23 +57,23 @@ class MPlayer(object):
         a command that does not read anything
         """
         return self._cmd(cmd,None,False,*args)
-    
+
     def arraycmd(self,name,key,*args):
         """
         array reading of mplayers output
         """
         return self._cmd(name,key,True,*args)
-            
+
     def cmd(self,name,key,*args):
         """
         single line reading with key
         """
         return self._cmd(name,key,False,*args)
-    
+
     def quit(self):
         self.command("quit",0)
         self._mplayer.wait()
-    
+
     def _cmd(self,name,key,readall,*args):
         """
         key is the beginning of a line that the command waits for.
@@ -83,16 +83,16 @@ class MPlayer(object):
         cmd = '%s%s%s\n'%(name,
                 ' ' if args else '',
                 ' '.join(repr(a) for a in args)
-                )        
-        
-        
+                )
+
+
         if readall:
             ret = []
         else:
             ret = None
-        
-        self.lock.acquire()  
-        i = 0      
+
+        self.lock.acquire()
+        i = 0
         try:
             #print "CMD: " + str(cmd)
             self._mplayer.stdin.write(cmd)
@@ -105,7 +105,7 @@ class MPlayer(object):
                         if tmp.startswith(key):
                             break
                     else:
-                        
+
                         if tmp.startswith(key):
                             val = tmp.split('=', 1)[1].rstrip()
                             try:
@@ -116,8 +116,8 @@ class MPlayer(object):
         except Exception,e:
             print "error in mplayer.cmd: ", e
             pass
-        
-        
+
+
         self.lock.release()
 
         return ret

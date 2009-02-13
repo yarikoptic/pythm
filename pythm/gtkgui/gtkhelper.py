@@ -25,8 +25,8 @@ class ImageButton(gtk.Button):
         img = gtk.image_new_from_stock(stock, gtk.ICON_SIZE_LARGE_TOOLBAR)
         img.set_padding(3,15)
         self.set_image(img)
-        
-        
+
+
 def get_scrolled_widget():
     if use_sc:
         sc = gtk.ScrolledWindow()

@@ -194,22 +194,22 @@ class sender_n_fetcher(object):
         try:
             getattr(self.sender, cmd)(*args)
             junk, howmany, type, keywords = get_command(cmd, args)
-    
+
             if howmany == ZERO:
                 self.fetcher.clear()
                 return
-    
+
             if howmany == ONE:
                 return self.fetcher.one_object(keywords, type)
-    
+
             assert howmany == MANY
             result = self.fetcher.all_objects(keywords, type)
-    
+
             if not self.iterate:
                 result = list(result)
                 self.fetcher.clear()
                 return result
-    
+
             # stupid hack because you apparently can't return non-None and yield
             # within the same function
             def yield_then_clear(it):
@@ -252,7 +252,7 @@ class response_fetcher(object):
         getline = self.talker.get_line
         getpair = self.talker.get_pair
         done = self.talker.done
-        
+
         while not done:
             #self.talker.get_line()
             getline()
@@ -271,7 +271,7 @@ class response_fetcher(object):
 
             if not type and 'type' not in entity.keys():
                 entity['type'] = key
-                
+
             entity[key] = val
             self.talker.current_line = ''
 
@@ -310,7 +310,7 @@ class mpd_connection(object):
         self.fetch = response_fetcher(self.talker)
         self.do = sender_n_fetcher(self.send, self.fetch)
         self.doit = sender_n_fetcher(self.send, self.fetch)
-        self.doit.iterate = True  
+        self.doit.iterate = True
 
         self._hello()
 

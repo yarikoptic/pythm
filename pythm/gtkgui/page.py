@@ -28,10 +28,10 @@ class Page(gtk.VBox):
         self.cmdimg.set_padding(3,3)
         self.cmdimg.set_sensitive(False)
         self.btnbox.pack_start(self.cmdimg,False,False,0)
-    
+
     def check_cmdstate(self,state):
         self.cmdimg.set_sensitive(not state)
-    
+
     def check_disabled(self,newstate):
         if newstate == State.DISABLED:
             self.set_sensitive(False)
@@ -39,6 +39,5 @@ class Page(gtk.VBox):
             self.set_sensitive(True)
 
 
-        
-        
-        
+
+

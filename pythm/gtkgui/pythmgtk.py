@@ -46,9 +46,9 @@ class PythmGtk:
 
         self.window.connect("delete_event", self.delete_event)
         self.window.connect("destroy", self.destroy)
-        
+
         self.cfg = PythmConfig()
-        
+
         self.vbox = gtk.VBox()
         self.tabs = gtk.Notebook()
         self.tabs.set_property("homogeneous",True)
@@ -58,26 +58,24 @@ class PythmGtk:
         self.tabs.append_page(play,img)
         self.tabs.child_set(play,"tab-expand",True)
         img = gtk.image_new_from_stock(gtk.STOCK_EDIT, gtk.ICON_SIZE_LARGE_TOOLBAR)
-        img.set_padding(3,3)        
+        img.set_padding(3,3)
         self.tabs.append_page(PageList(),img)
         img = gtk.image_new_from_stock(gtk.STOCK_FIND, gtk.ICON_SIZE_LARGE_TOOLBAR)
         img.set_padding(3,3)
         self.tabs.append_page(PageBrowse(),img)
-        
+
         img = gtk.image_new_from_stock(gtk.STOCK_EXECUTE, gtk.ICON_SIZE_LARGE_TOOLBAR)
         img.set_padding(3,3)
         box = gtk.HBox()
         self.tabs.append_page(PageBackend(),img)
 
         self.vbox.add(self.tabs)
-        
-    
+
+
         # This packs the button into the window (a GTK container).
         self.window.add(self.vbox)
-        
+
         # and the window
         self.window.show_all()
-            
-        gtk.main()
 
-        
+        gtk.main()
