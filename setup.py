@@ -10,7 +10,7 @@
 
 from distutils.core import setup
 import glob
-    
+
 setup(name='Pythm',
         version='0.5.1',
         description='Frontend for mplayer and mpd',

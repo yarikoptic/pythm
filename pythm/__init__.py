@@ -6,6 +6,6 @@
 #   copyright and license terms.
 #
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-""" TODO: Module description """
+"""pythm -- Python Media Player"""
 
 from pythm import *
