@@ -6,7 +6,7 @@
 #   copyright and license terms.
 #
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-""" TODO: Module description """
+"""Distutils setup for pythm installation"""
 
 from distutils.core import setup
 import glob
@@ -27,7 +27,8 @@ setup(name='Pythm',
             'Topic :: Multimedia :: Sound :: Players',
             ],
         package_dir= {'pythm':'pythm'},
-        packages=['pythm','pythm.gtkgui','pythm.backend','pythm.mplayer','pythm.mpd', 'pythm.gstreamer'],
+        packages=['pythm', 'pythm.gtkgui', 'pythm.backend',
+                  'pythm.mplayer', 'pythm.mpd', 'pythm.gstreamer'],
         data_files=[('share/applications', ['data/pythm.desktop']),
                     ('/etc', ['conf/pythm.conf']),
                     ('share/pythm/', ['doc/README'])
