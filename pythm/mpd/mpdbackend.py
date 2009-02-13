@@ -98,7 +98,7 @@ class MpdBackend(PythmBackend):
         if (self.state == State.PLAYING):
             logger.debug("Pausing playback due to phone call.")
             self.set_state(State.PAUSED_PHONE)
-                    self.mpd.pause(1)
+            self.mpd.pause(1)
 
     """
     " Called to resume playing when a phone call ends.
