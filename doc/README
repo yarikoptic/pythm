@@ -2,18 +2,19 @@ Pythm 0.5.1 Readme
 
 Description:
 ------------
-	Pythm is a media player gui designed to work with mplayer or mpd as "slave" players.
-	use mplayer to hear music on the road or mpd control if your are at home.
+	Pythm is a media player gui designed to work with mplayer or mpd
+	as "slave" players.  use mplayer to hear music on the road or mpd
+	control if your are at home.
 
 Installing pythm:
 -----------------
-	install pythm using opkg install <pkg>. Start with the shortcut or use 
-	the terminal and type "pythm-bin"
-	
+	Install pythm using opkg install <pkg>. Start with the shortcut or
+	use the terminal and type "pythm-bin"
+
 Run pythm with the source package:
 ----------------------------------
-	Extract the source tarball, change to the Pythm-0.5.1 directory and start pythm
-	using the executable script "./pythm-bin" 
+	Extract the source tarball, change to the Pythm-0.5.1 directory
+	and start pythm using the executable script "./pythm-bin"
 
 Requirements:
 -------------
@@ -31,7 +32,7 @@ Using mpd / config file:
 	in ~/.pythm/ and rename it to pythm.conf.
 	The ipk-package now contains the pythm.conf and installs it in
 	/etc/pythm.conf. feel free to copy it to your ~/.pythm/-directory.
-	
+
 	Change the settings in the file to fit your needs:
 	e.g. mpd host, mpd port and password
 
