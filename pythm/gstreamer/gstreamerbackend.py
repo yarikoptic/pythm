@@ -30,7 +30,7 @@ ASYNC_POLL_TIME = 1.0
 ASYNC_LOAD_WAIT_TIME = 3.5
 # Time to add to elapsed time when determining if song is over.
 # This is to get a smooth transition.
-NEXT_SONG_FUDGE_TIME = 0.25
+NEXT_SONG_FUDGE_TIME = 0.45
 
 """
 " A thread for loading the next track in the background.
@@ -298,6 +298,8 @@ class GStreamerBackend(PythmBackend):
             if (songEntry.length <= 0):
                 songEntry.length = self.get_length_retry(self.players[playerId])
 
+            player.seek_simple(self.timeFmt, gst.SEEK_FLAG_FLUSH, 1 * 1000000)
+
             player.set_state(gst.STATE_PAUSED)
 
             # Now remember the song ID.
@@ -316,9 +318,9 @@ class GStreamerBackend(PythmBackend):
         entryState = self.state
 
         # Default state to stopped so main update loop will
-        # stop drawing somg timer until after new song is
-        # loaded.
+        # stop drawing somg timer until after new song is loaded.
         self.state = State.STOPPED
+        self.emit(Signals.POS_CHANGED, 0)
 
         # If paused, simply resume playing.
         if (entryState == State.PAUSED):
@@ -344,6 +346,7 @@ class GStreamerBackend(PythmBackend):
                 # New song to play is same a current song (e.g., repeat)
                 # so restart current song without loading.
                 if (songToPlay[1].id == self.songIds[self.curPlayer]):
+                    self.players[self.curPlayer].set_state(gst.STATE_NULL)
                     self.players[self.curPlayer].set_state(gst.STATE_PLAYING)
 
                 # Otherwise, play the selected song.
@@ -438,11 +441,11 @@ class GStreamerBackend(PythmBackend):
 
         return p
 
-    """
-    " Determines what the next song should be and returns
-    " that song entry.
-    """
     def choose_song(self, dir = PlayDirection.CURRENT):
+        """
+        Determines what the next song should be and returns
+        that song entry.
+        """
         if (self.current is None):
             nextSong = self.first
 
@@ -455,24 +458,48 @@ class GStreamerBackend(PythmBackend):
             if (nextSong == None): nextSong = self.first
 
         elif (dir == PlayDirection.BACKWARD):
-            nextSong = self.current[0]
+            # If the current song is some number of seconds in,
+            # back should restart the song.
+            if (self.songTimer > 2):
+	        nextSong = self.current
+            else:
+                nextSong = self.current[0]
             if (nextSong == None): nextSong = self.last
 
         return nextSong
 
-    """
-    " Next song in playlist
-    """
     def next(self, stopCurrent = True):
+        """
+        Advances to the next song in playlist
+        """
         nextSong = self.choose_song(PlayDirection.FORWARD)
-        self.play(nextSong[1].id, stopCurrent)
+        self.act_on_next_prev(nextSong)
 
-    """
-    " Previous song in Playlist
-    """
     def prev(self):
+        """
+        Advances to the previous song in Playlist
+        """
         nextSong = self.choose_song(PlayDirection.BACKWARD)
-        self.play(nextSong[1].id)
+        self.act_on_next_prev(nextSong)
+
+    def act_on_next_prev(self, newSong):
+        """
+        Perform actions after next/previous based on the current play
+        state. If playing, play new song, if not playing, redraw UI
+        for new song and stay not playing.
+        """
+        if (self.state == State.PLAYING):
+            self.play(newSong[1].id)
+        else:
+            # If pasued and the new song is not the current song,
+            # stop the song so we forget current position and such.
+            if (self.state == State.PAUSED):
+                self.stop()
+
+            self.current = newSong
+            self.songTimer = 0
+            self.emit(Signals.POS_CHANGED, 0)
+            self.emit(Signals.SONG_CHANGED, self.current[1])
 
     """
     " pauses playback
@@ -490,7 +517,7 @@ class GStreamerBackend(PythmBackend):
     """
     def stop(self):
         try:
-            if (self.state == State.PLAYING):
+            if (self.state == State.PLAYING or self.state == State.PAUSED):
                 self.players[self.curPlayer].set_state(gst.STATE_READY)
                 self.set_state(State.STOPPED)
         except:
@@ -562,7 +589,7 @@ class GStreamerBackend(PythmBackend):
         self.emit(Signals.BROWSER_CHANGED,parentDir,ret)
 
     """
-    " filters out private files and files with wrong endings.
+    
     """
     def filter(self,file,dir):
         for filter in self.filters:
@@ -668,7 +695,7 @@ class GStreamerBackend(PythmBackend):
     " seeks to pos in seconds
     """
     def seek(self, pos):
-        if (self.state != State.PLAYING): return
+        if (self.state != State.PLAYING or self.state != State.PAUSED): return
         if (pos > self.current[1].length): return
 
         # Lock down updates. Seeking can take time, and
@@ -677,9 +704,8 @@ class GStreamerBackend(PythmBackend):
         self.sendUpdates = False
 
         try :
-            player 	       = self.players[self.curPlayer]
-            player.seek_simple(self.timeFmt, gst.SEEK_FLAG_FLUSH,
-            pos * 1000000000)
+            player = self.players[self.curPlayer]
+            player.seek_simple(self.timeFmt, gst.SEEK_FLAG_FLUSH, pos * 1000000000)
             self.songTimer = pos
             logger.debug("Seeking to %s" % format_time(pos))
 
