@@ -1,5 +1,3 @@
-# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
-# vi: set ft=python sts=4 ts=4 sw=4 et:
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 #
 #   See COPYING file distributed along with the pythm for the
@@ -9,20 +7,21 @@
 """ TODO: Module description """
 
 import os, re, sys, time
-import alsaaudio
 import ecore.evas
 import dbus
-import pygst, gst
+import pygst
+import gst
+from gplayer import GPlayer, MediaTypes
 from pythm.backend import *
 from pythm.functions import *
 from threading import Thread, Lock
 
-# Time (seconds) to wait before polling alsa for the current volume.
-ALSA_POLL_TIME = 3
-# Name of the alsa mixer channel to contol.
-ALSA_MIXER_NM = 'PCM'
+
+# Default volume level.
+# TODO DMR save this somewhere.
+DEFAULT_VOLUME = 75
 # Time between playback time updates.
-PLAYBACK_POLL_TIME = 0.8
+PLAYBACK_POLL_TIME = 1.0
 # Time between async loader thread firing.
 ASYNC_POLL_TIME = 1.0
 # Time after a song starts that we wait before letting the
@@ -37,7 +36,7 @@ NEXT_SONG_FUDGE_TIME = 0.45
 " All it does is call async_load_thread in the main backend
 " class every so often.
 """
-class AsyncLoader(Thread):
+class AsyncLoader(Thread):    
     def __init__(self, backend):
         Thread.__init__(self)
         self.backend = backend
@@ -60,12 +59,10 @@ class GStreamerBackend(PythmBackend):
     def __init__(self):
         self.mixer	   	 	= None
         self.lastVolume     = 0
-        self.volTimer	    = 0
         self.songTimer	    = 0
         self.songLength	    = 0
         self.pollTimer	    = 0
         self.sendUpdates    = True	# Send position update events.
-        self.timeFmt	    = gst.Format(gst.FORMAT_TIME)
         self.songChanged    = False	# Flag for async song changed signal emmitt.
         self.players	    = [None, None] # Gstreamer players.
         self.songIds        = [None, None] # ID's of songs currenlty loaded into their respective players.
@@ -102,7 +99,6 @@ class GStreamerBackend(PythmBackend):
             self.threadLoad = AsyncLoader(self)
             self.threadLoad.start()
 
-
             # Tell pythm we have loaded successfully.
             return PythmBackend.startup(self,handler)
 
@@ -110,62 +106,31 @@ class GStreamerBackend(PythmBackend):
             logger.error("Error initializing gstreamer backend: %s " % str(e))
             return False
 
-    """
-    " Initialize the gstreamer player.
-    """
     def gstreamer_init(self):
+        """
+        Initialize the gstreamer player.
+        """
         try:
-            # Init gstreamer.
-            self.players[0] = gst.element_factory_make("playbin", "pythm-player")
-            self.players[1] = gst.element_factory_make("playbin", "pythm-player")
-            #fakesink       = gst.element_factory_make("fakesink", "pythm-fakesink")
-            # No video so use a fake sink.
-            #self.players[0].set_property("video-sink", fakesink)
-            #self.players[1].set_property("video-sink", fakesink)
+            for i in range(0, 2):
+                self.players[i] = GPlayer()
+                self.players[i].init()
 
-            streamerBus = self.players[0].get_bus()
-            streamerBus.add_signal_watch()
-            streamerBus.connect("message", self.on_player_message, 0)
-
-            streamerBus = self.players[1].get_bus()
-            streamerBus.add_signal_watch()
-            streamerBus.connect("message", self.on_player_message, 1)
+                streamerBus = self.players[i].get_bus()
+                streamerBus.add_signal_watch()
+                streamerBus.connect("message::eos", self.on_player_message, i)
+                streamerBus.connect("message::error", self.on_player_message, i)
 
         except Exception,e:
             logger.error("Could not connect to gstreamer: %s" % str(e))
 
-    """
-    " Initialize the connection with the alsa system and
-    " read the current volume.
-    """
-    def audio_init(self):
-        self.mixer = alsaaudio.Mixer(ALSA_MIXER_NM)
-        self.update_volume()
-
-    """
-    " Read the current volume from alsa and set it in the GUI
-    " via the volume changed callback.
-    """
-    def update_volume(self):
-        # We have to get a new reference to the mixer each time
-        # we call getvolume or it will not be the correct
-        # new volume if the volume was changed outside the app.
-        mixer = alsaaudio.Mixer(ALSA_MIXER_NM)
-        if (mixer != None):
-            vol = mixer.getvolume()[0]
-            if (vol != self.lastVolume):
-                self.lastVolume = float(vol)
-                self.emit(Signals.VOLUME_CHANGED, self.lastVolume)
-
-    """
-    " Set the current hardware volume of the mixer returned
-    " by get_mixer().
-    """
     def set_volume(self,newVol):
-        if (self.mixer != None):
-            self.mixer.setvolume(int(newVol))
-            self.lastVolume = newVol
-            self.emit(Signals.VOLUME_CHANGED,newVol)
+        """
+        Set the current hardware volume of the mixer returned
+        by get_mixer().
+        """
+        for i in range(0, 2):
+           self.players[i].set_volume(newVol)
+        self.emit(Signals.VOLUME_CHANGED, newVol)
 
     """
     " Bind top dbus to do certain things.
@@ -291,24 +256,36 @@ class GStreamerBackend(PythmBackend):
 
         try:
             fn = songEntry.id
+            ext = os.path.splitext(fn)[1].lower()
             player.set_state(gst.STATE_NULL)
-            player.set_property("uri", "file://" + fn)
+
+            if (ext == FILE_EXT_OGG):
+                check = player.set_media(MediaTypes.OGG)
+            elif (ext == FILE_EXT_MP3):
+                check = player.set_media(MediaTypes.MP3)
+            else:
+                return False
+
+            player.set_file(fn)
+            # Can only get the track length while the player is playing.
             player.set_state(gst.STATE_PLAYING)
 
             if (songEntry.length <= 0):
                 songEntry.length = self.get_length_retry(self.players[playerId])
 
-            player.seek_simple(self.timeFmt, gst.SEEK_FLAG_FLUSH, 1 * 1000000)
+            # Seek the player a little to help it load. 
+            # DMR Maybe this works...
+            player.seek(0.1);
 
             player.set_state(gst.STATE_PAUSED)
 
             # Now remember the song ID.
             self.songIds[playerId] = fn
-            return True
+            return check
 
         except Exception,e:
             logger.error("Error loading song %s into player %i: %s" %
-                (str(songEntry), playerId, str(e)))
+                (songEntry, playerId, e))
             return False
 
     """
@@ -354,9 +331,6 @@ class GStreamerBackend(PythmBackend):
                     player  = None
                     nextPId = self.get_next_player_id()
 
-                    #print "*** current id: " + str(self.curPlayer) + ", next: " + str(nextPId)
-                    #print "*** song in next player: " + str(self.songIds[nextPId])
-
                     # Stop any asynchronous loading while we work.
                     self.asyncLoadTime = -1
 
@@ -397,11 +371,11 @@ class GStreamerBackend(PythmBackend):
                 if (player != None):
                     player.set_state(gst.STATE_NULL)
 
-    """
-    " Gets the length of a song from a gstreamer player
-    " and allows for a few retries.
-    """
     def get_length_retry(self, gplayer):
+        """
+        Gets the length of a song from a gstreamer player
+        and allows for a few retries.
+        """
         l		= 0
         retries = 5
 
@@ -412,34 +386,24 @@ class GStreamerBackend(PythmBackend):
 
         return l
 
-    """
-    " Returns the song length from a gstreamer player.
-    """
     def get_length(self, gplayer):
-        l = -1
+        """
+        Returns the song length from a gstreamer player.
+        """
         try:
-            l = gplayer.query_duration(self.timeFmt, None)[0]
-            # Time is in nanoseconds.
-            l = float(l / 1000000000)
+            return gplayer.get_duration()
         except Exception,e:
             logger.error("Error getting song length: %s" % str(e))
 
-        return l
-
-    """
-    " Returns the current position from a gstreamer player.
-    " Returns -1 if there was an error getting the current position.
-    """
     def get_position(self, gplayer):
-        p = -1
+        """
+        Returns the current position from a gstreamer player.
+        Returns -1 if there was an error getting the current position.
+        """
         try:
-            p = gplayer.query_position(self.timeFmt, None)[0]
-            # Time is in nanoseconds.
-            p = float(p / 1000000000)
+            return gplayer.get_position()
         except:
-            p = -1
-
-        return p
+            return -1
 
     def choose_song(self, dir = PlayDirection.CURRENT):
         """
@@ -461,7 +425,7 @@ class GStreamerBackend(PythmBackend):
             # If the current song is some number of seconds in,
             # back should restart the song.
             if (self.songTimer > 2):
-	        nextSong = self.current
+                nextSong = self.current
             else:
                 nextSong = self.current[0]
             if (nextSong == None): nextSong = self.last
@@ -501,10 +465,10 @@ class GStreamerBackend(PythmBackend):
             self.emit(Signals.POS_CHANGED, 0)
             self.emit(Signals.SONG_CHANGED, self.current[1])
 
-    """
-    " pauses playback
-    """
     def pause(self):
+        """
+        pauses playback
+        """
         try:
             if (self.state == State.PLAYING):
                 self.players[self.curPlayer].set_state(gst.STATE_PAUSED)
@@ -512,10 +476,10 @@ class GStreamerBackend(PythmBackend):
         except:
             pass
 
-    """
-    " stops playback
-    """
     def stop(self):
+        """
+        stops playback
+        """
         try:
             if (self.state == State.PLAYING or self.state == State.PAUSED):
                 self.players[self.curPlayer].set_state(gst.STATE_READY)
@@ -772,13 +736,6 @@ class GStreamerBackend(PythmBackend):
     " gets called from StateChecker Thread.
     """
     def check_state(self, elapsedTime):
-        # Only poll alsa for the current volume every so often
-        # as is seems to take a non-insignficant load.
-        self.volTimer  += elapsedTime
-        if (self.volTimer >= ALSA_POLL_TIME):
-            self.volTimer = 0
-            self.update_volume()
-
         if (self.state != State.PLAYING): return
 
         try:
@@ -797,7 +754,6 @@ class GStreamerBackend(PythmBackend):
                 if (self.sendUpdates):
                     self.emit(Signals.POS_CHANGED, self.songTimer)
 
-                #print "Song time: " + str(self.songTimer)  + ", song length: " + str(self.songLength)
                 self.pollTimer = 0
 
             # Use the timer to determine if a song has ended
@@ -820,7 +776,4 @@ class GStreamerBackend(PythmBackend):
         self.set_state(State.STOPPED)
         self.emit_pl_changed()
         self.browse()
-        # Init the alsa connection here since this sets the
-        # GUI volume slider.
-        self.audio_init()
-
+	self.set_volume(DEFAULT_VOLUME)	

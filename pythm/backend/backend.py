@@ -217,7 +217,7 @@ class PythmBackend(object):
                     self.suspendRef.ReleaseResource("CPU");
 
         except Exception,e:
-            logger.warn("Unable to set no suspend: %s" % e)
+            logger.debug("Unable to set no suspend: %s" % e)
 
     """
     " Callback for when the GSM call state changes.

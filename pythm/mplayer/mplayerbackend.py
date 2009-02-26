@@ -12,17 +12,14 @@ from pythm.backend import *
 import os
 import re
 import sys
-import alsaaudio
 import ecore.evas
 import time
 from mplayer import MPlayer
 from threading import Thread, Lock
 from pythm.functions import *
 
-# Time (seconds) to wait before polling alsa for the current volume.
-ALSA_POLL_TIME = 3
-# Name of the alsa mixer channel to contol.
-ALSA_MIXER_NM = 'PCM'
+# Initial volume.
+DEFAULT_VOLUME = 75
 # Time (seconds) between mplayer polls.
 MLPAYER_POLL_TIME = 0.8
 
@@ -97,37 +94,12 @@ class MplayerBackend(PythmBackend):
         logger.error( "IDLE EVENT = %s" % state)
 
     """
-    " Initialize the connection with the alsa system and
-    " read the current volume.
-    """
-    def audio_init(self):
-        self.mixer = alsaaudio.Mixer(ALSA_MIXER_NM)
-        self.update_volume()
-
-    """
-    " Read the current volume from alsa and set it in the GUI
-    " via the volume changed callback.
-    """
-    def update_volume(self):
-        # We have to get a new reference to the mixer each time
-        # we call getvolume or it will not be the correct
-        # new volume if the volume was changed outside the app.
-        mixer = alsaaudio.Mixer(ALSA_MIXER_NM)
-        if (mixer != None):
-            vol = mixer.getvolume()[0]
-            if (vol != self.lastVolume):
-                self.lastVolume = float(vol)
-                self.emit(Signals.VOLUME_CHANGED, self.lastVolume)
-
-    """
     " Set the current hardware volume of the mixer returned
     " by get_mixer().
     """
     def set_volume(self,newVol):
-        if (self.mixer != None):
-            self.mixer.setvolume(int(newVol))
-            self.lastVolume = newVol
-            self.emit(Signals.VOLUME_CHANGED,newVol)
+        self.mplayer.command("volume",newVol,1)
+        self.emit(Signals.VOLUME_CHANGED,newVol)
 
     """
     " Set to play songs in a random order.
@@ -524,13 +496,6 @@ class MplayerBackend(PythmBackend):
     " gets called from StateChecker Thread.
     """
     def check_state(self, elapsedTime):
-        # Only poll alsa for the current volume every so often
-        # as is seems to take a non-insignficant load.
-        self.volTimer  += elapsedTime
-        if (self.volTimer >= ALSA_POLL_TIME):
-          self.volTimer = 0
-          self.update_volume()
-
         try:
             if (self.state == State.PLAYING):
                 posValid = 1
@@ -584,6 +549,4 @@ class MplayerBackend(PythmBackend):
         self.set_state(State.STOPPED)
         self.emit_pl_changed()
         self.browse()
-        # Init the alsa connection here since this sets the
-        # GUI volume slider.
-        self.audio_init()
+        self.set_volume(DEFAULT_VOLUME)
