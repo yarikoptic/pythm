@@ -74,6 +74,7 @@ class GPlayer:
             self.player.remove(self.source)
             self.player.remove(self.conv)
             self.player.remove(self.sink)
+            self.player.remove(self.volume)
         
         if (self.player.get_by_name("decode-ogg") is not None):
             self.player.remove(self.decoders[MediaTypes.OGG])
