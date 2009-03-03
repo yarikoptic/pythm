@@ -16,15 +16,15 @@ import dbus
 import e_dbus
 import ecore
 
-UPDATE_TIME 						= 0.1		# Time between update loops.
-RESUME_FROM_PHONE_TIME 	= 2			# Time before resuming after phone call suspend.
+UPDATE_TIME = 0.1 # Time between update loops.
+RESUME_FROM_PHONE_TIME = 2 # Time before resuming after phone call suspend.
 
-CFG_SECTION_PYTHM					= "pythm"					# Config file pythm section name.
-CFG_SETTING_NOSUSPEND			= "no_suspend"		# Config file setting name for no suspend during playback.
-CFG_SETTING_SUSPENDIFACE	= "suspend_iface"	# Config file setting name for no suspend dbus interface.
+CFG_SECTION_PYTHM = "pythm" # Config file pythm section name.
+CFG_SETTING_NOSUSPEND = "no_suspend" # Config file setting name for no suspend during playback.
+CFG_SETTING_SUSPENDIFACE = "suspend_iface" # Config file setting name for no suspend dbus interface.
 
-SUSPEND_IFACE_FSO		= "fso"		# Name of config file suspend interface setting for frameworkd.
-SUSPEND_IFACE_E 		= "e"			# Name of config file suspend interface setting for enlightenment.
+SUSPEND_IFACE_FSO = "fso" # Name of config file suspend interface setting for frameworkd.
+SUSPEND_IFACE_E = "e" # Name of config file suspend interface setting for enlightenment.
 
 logger = logging.getLogger("pythm")
 logging.basicConfig(level    = logging.CRITICAL,
@@ -40,9 +40,9 @@ class StoppableThread(Thread):
         self.stopped = True
 
     def run(self):
-        self.stopped 			= False
-        self.elapsedTime 	= 0.0
-        self.timeStart 		= time.time()
+        self.stopped = False
+        self.elapsedTime = 0.0
+        self.timeStart = time.time()
         ecore.timer_add(UPDATE_TIME, self.update)
         ecore.main_loop_begin()
 
@@ -56,8 +56,8 @@ class StoppableThread(Thread):
         self.stopped = True
 
     def update(self):
-        self.elapsedTime 	= time.time() - self.timeStart
-        self.timeStart 		= time.time()
+        self.elapsedTime = time.time() - self.timeStart
+        self.timeStart = time.time()
         self.do_work()
         ecore.timer_add(UPDATE_TIME, self.update)
 
@@ -105,18 +105,19 @@ class PythmBackend(object):
     " the backend functions emit signals in the gui's thread.
     """
     def __init__(self,name):
-        self.name 							= name
-        self.cfg 								= PythmConfig()
-        self.eventhandler 			= None
-        self.initialized 				= False
-        self.quiet 							= True
-        self.sysbus 						= None
-        self.sesbus 						= None
-        self.mainloop 					= None
-        self.state							= State.DISABLED
-        self.oldLockTime   			= -1			# Original enlightenment susepend time.
-        self.suspendRef    			= None		# Reference to dbus suspend disabling setting.
-        self.resumePhoneTimer 	= 0.0
+        self.name = name
+        self.cfg = PythmConfig()
+        self.eventhandler = None
+        self.initialized = False
+        self.quiet = True
+        self.sysbus = None
+        self.sesbus = None
+        self.mainloop = None
+        self.state = State.DISABLED
+        self.oldLockTime = -1	# Original enlightenment susepend time.
+        self.suspendRef = None	# Reference to dbus suspend disabling setting.
+        self.suspendDisabled = False  # Remember if we already disabled suspend.
+        self.resumePhoneTimer = 0.0
 
         self.init_dbus()
 
@@ -127,9 +128,9 @@ class PythmBackend(object):
     " Start main thread.
     """
     def startup(self,handler):
-        self.statecheck 		= StateChecker(self)
-        self.initialized 		= True
-        self.eventhandler 	= handler
+        self.statecheck = StateChecker(self)
+        self.initialized = True
+        self.eventhandler = handler
         self.statecheck.start()
         return True
 
@@ -164,8 +165,8 @@ class PythmBackend(object):
     def init_suspend_disable(self):
         # If not set in the config file to explicitly no disable suspend while
         # plaing, setup the interface to do so.
-        noSuspend 	= self.cfg.get(CFG_SECTION_PYTHM, CFG_SETTING_NOSUSPEND, "true")
-        iface		= self.cfg.get(CFG_SECTION_PYTHM, CFG_SETTING_SUSPENDIFACE, SUSPEND_IFACE_FSO)
+        noSuspend = self.cfg.get(CFG_SECTION_PYTHM, CFG_SETTING_NOSUSPEND, "true")
+        iface = self.cfg.get(CFG_SECTION_PYTHM, CFG_SETTING_SUSPENDIFACE, SUSPEND_IFACE_FSO)
         # Keep the default value of None in self.suspendRef as a way of knowing if this
         # setting was disabled.
         if (noSuspend != "true"): return;
@@ -173,19 +174,19 @@ class PythmBackend(object):
         try:
             # Enlightenment dbus.
             if (iface == SUSPEND_IFACE_E):
-                dbusName  				= "org.enlightenment.wm.service"
-                dbusPath  				= "/org/enlightenment/wm/RemoteObject"
-                dbusIface 				= "org.enlightenment.wm.IllumeConfiguration"
-                obj 			 				= self.sesbus.get_object(dbusName, dbusPath, introspect=False)
-                self.suspendRef 	= dbus.Interface(obj, dbus_interface=dbusIface)
-                self.oldLockTime 	= self.suspendRef.AutosuspendTimeoutGet()
+                dbusName = "org.enlightenment.wm.service"
+                dbusPath = "/org/enlightenment/wm/RemoteObject"
+                dbusIface = "org.enlightenment.wm.IllumeConfiguration"
+                obj = self.sesbus.get_object(dbusName, dbusPath, introspect=False)
+                self.suspendRef = dbus.Interface(obj, dbus_interface=dbusIface)
+                self.oldLockTime = self.suspendRef.AutosuspendTimeoutGet()
             # Frameworkd dbus.
             else:
-                dbusName  				= "org.freesmartphone.ousaged"
-                dbusPath  				= "/org/freesmartphone/Usage"
-                dbusIface 				= "org.freesmartphone.Usage"
-                obj 			 				= self.sysbus.get_object(dbusName, dbusPath, introspect=False)
-                self.suspendRef 	= dbus.Interface(obj, dbus_interface=dbusIface)
+                dbusName = "org.freesmartphone.ousaged"
+                dbusPath = "/org/freesmartphone/Usage"
+                dbusIface = "org.freesmartphone.Usage"
+                obj = self.sysbus.get_object(dbusName, dbusPath, introspect=False)
+                self.suspendRef = dbus.Interface(obj, dbus_interface=dbusIface)
 
         except Exception, e:
             self.suspendRef = None
@@ -203,18 +204,22 @@ class PythmBackend(object):
             iface = self.cfg.get(CFG_SECTION_PYTHM, CFG_SETTING_SUSPENDIFACE, SUSPEND_IFACE_FSO)
 
             # Set to no suspend.
-            if (self.state == State.PLAYING):
+            if (self.state == State.PLAYING and not self.suspendDisabled):
                 if (iface == SUSPEND_IFACE_E):
                     self.suspendRef.AutosuspendTimeoutSet(0)
                 else:
                     self.suspendRef.RequestResource("CPU");
 
+                self.suspendDisabled = True
+
             # Restore old setting.
-            elif (self.state > -1):
+            elif (self.state > -1 and self.suspendDisabled):
                 if (iface == SUSPEND_IFACE_E):
                     self.suspendRef.AutosuspendTimeoutSet(int(self.oldLockTime))
                 else:
                     self.suspendRef.ReleaseResource("CPU");
+
+                self.suspendDisabled = False
 
         except Exception,e:
             logger.debug("Unable to set no suspend: %s" % e)
