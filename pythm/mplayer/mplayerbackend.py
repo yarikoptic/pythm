@@ -87,10 +87,13 @@ class MplayerBackend(PythmBackend):
             self.set_state(State.PLAYING)
         else:
             if plid != None:
-                self.choose_song(plid)
+		#i'm already in play loop, if i go on through choose_song, play loops...
+                #self.choose_song(plid)
+                self.current = self.entrydict[plid]
             if self.current != None:
                 entry = self.current[1]
-                self.emit(Signals.SONG_CHANGED,entry)
+		#XXX ptt song_changed is emitted a lot of times...
+                ####self.emit(Signals.SONG_CHANGED,entry)
                 self.mplayer.cmd("loadfile '" + entry.id.replace('\'', '\\\'') +"'", "======")
 		self.get_meta_data(entry.id)
                 entry.length = self.mplayer.cmd("get_time_length","ANS_LENGTH")
@@ -107,8 +110,9 @@ class MplayerBackend(PythmBackend):
         if plid != None:
             self.current = self.entrydict[plid]
             
-        if self.current != None:
-            self.emit(Signals.SONG_CHANGED,self.current[1])
+	#XXX ptt song_changed is emitted a lot of times...
+	#if self.current != None:
+	#    self.emit(Signals.SONG_CHANGED,self.current[1])
         
         if self.state == State.PAUSED:
             self.stop()
@@ -214,7 +218,7 @@ class MplayerBackend(PythmBackend):
         adds a browseEntry to the pl
         """
         tpl = self.get_meta_data(beId)
-        entry = PlaylistEntry(beId,tpl[0],tpl[1],tpl[2],tpl[3])
+        entry = PlaylistEntry(beId,tpl[0],tpl[1],tpl[2],tpl[3],tpl[4])
         
         if self.first == None:
             self.first = [None,entry,None]
@@ -230,6 +234,9 @@ class MplayerBackend(PythmBackend):
         
         self.emit_pl_changed()
 
+	#XXX ptt song_changed is emitted a lot of times...
+	#but here i refresh '>' indicator, whould be corrected
+	#TODO refres only ref '>' status of song
 	if self.current is not None:
 	    self.emit(Signals.SONG_CHANGED,self.current[1])
         
@@ -263,13 +270,16 @@ class MplayerBackend(PythmBackend):
 	    alb = id3.get('TALB')
         except:
             alb = "unknown"
-	#ptt cover
+        try:
+	    trk = id3.get('TRCK')
+        except:
+            trk = "1"
         try:
 	    pic = id3.getall('APIC')
         except:
             pic = None
 	
-        return (art,tit,alb,pic)
+        return (art,tit,alb,trk,pic)
     
 # ---------------------------------------------------
 
@@ -330,7 +340,6 @@ class MplayerBackend(PythmBackend):
         shuts down backend
         """
         try:
-            #PythmBackend.shutdown(self)
             self.mplayer.quit()
             PythmBackend.shutdown(self)
         except:

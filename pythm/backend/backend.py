@@ -208,11 +208,12 @@ class State:
 
 
 class PlaylistEntry:
-    def __init__(self, id, artist, title, album, cover):
+    def __init__(self, id, artist, title, album, track, cover):
         self.id = id
         self.artist = artist
         self.title = title
         self.album = album
+        self.track = track
         self.cover = cover
         self.length = -1
         
@@ -241,7 +242,6 @@ def browserEntryCompare(e1, e2):
         return 1
     
     return cmp(e1.caption, e2.caption)
-
 
 
     

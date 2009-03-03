@@ -2,7 +2,7 @@
 Version=0.5
 Type=Application
 Encoding=UTF-8
-Name=Pythm
+Name=pythm
 Comment=pyGTK+ Frontend for MPD and mplayer
 TryExec=pythm-bin
 Exec=pythm-bin

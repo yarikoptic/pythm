@@ -1,6 +1,7 @@
 import pygtk
 pygtk.require('2.0')
 import gtk
+import os
 import pango
 
 from page import Page
@@ -68,21 +69,47 @@ class PagePlay(Page):
             self.btn_playpause.set_image(self.pauseimg)
 
     def song_changed(self,newplentry):
-	#try:
-	#    if newplentry.cover is not None:
-	#        self.coverart.set_from_pixbuf(gtk.gdk.pixbuf_new_from_inline(len(newplentry.cover[0].data), newplentry.cover[0].data, False))
-	#	print "PTT:::"+newplentry.cover[0].data+":::PTT"
-	        #self.coverart.set_from_pixbuf(gtk.gdk.pixbuf_new_from_data(newplentry.cover[0].data, 0, False, 16, 200, 200, 0))
-	#except Exception, e:
-	#    print "no cover: "+str(e)
         self.songlabel.set_label(str(newplentry.title))
         self.tpe1label.set_label(str(newplentry.artist))
         self.talblabel.set_label(str(newplentry.album))
+	if newplentry.track is not None:
+            self.trcklabel.set_label("(" + str(newplentry.track).replace('/', ' of ') + ")")
+	    # TODO cut away zeros, eg: xlate 01 to 1
+            #self.trcklabel.set_label("(" + str(newplentry.track).replace('/', ' of ').replace(' 0', ' ') + ")")
         if newplentry.length > 0:
             self.pos_scale.set_range(0,newplentry.length)
-	self.totaltime.set_label(" / " + format_time(newplentry.length))
+	    self.totaltime.set_label(" / " + format_time(newplentry.length))
+
+	#load cover art
+	#if len(newplentry.cover[0].data) > 0:
+	if len(newplentry.cover) > 0:
+#	    print "PTT found a cover picture "+str(newplentry.title)
+	    self.coverart.set_property("visible", True)
+	    #TODO is there a way to make it less heavy?
+	    self.coverart.set_from_pixbuf(self.get_cover_pix(newplentry.cover[0].data))
+	    self.talblabel.set_alignment(0, 0.5)
+	    self.trcklabel.set_alignment(0, 0.5)
+	    self.hboxtm.set_child_packing(self.timelabel,False,True,0,gtk.PACK_START)
+	else:
+#	    print "PTT is sorry, no cover :( "+str(newplentry.title)
+	    self.coverart.set_property("visible", False)
+	    self.talblabel.set_alignment(0.5, 0.5)
+	    self.trcklabel.set_alignment(0.5, 0.5)
+	    self.hboxtm.set_child_packing(self.timelabel,True,True,0,gtk.PACK_START)
+
         self.pos_changed(0)
 
+    def get_cover_pix(self, data):
+	tmp = os.tempnam()
+	fd = open(tmp, 'wb')
+	fd.write(data)
+	fd.flush()
+	fd.close()
+	#example: self.coverart.set_from_pixbuf(gtk.gdk.pixbuf_new_from_file_at_size("/tmp/mantus2009_200.jpg", 120, 120))
+	pix = gtk.gdk.pixbuf_new_from_file_at_size(tmp, 130, 130)
+	os.remove(tmp)
+	return pix
+	
     def pos_changed(self,newPos):
         self.posevent = True
         newPos = int(newPos)
@@ -99,28 +126,40 @@ class PagePlay(Page):
 	# load preferred fonts
 	tagfont = self.cfg.get("pythm","tagfont",None)
         #track info
+	#title and artist
         vbox = gtk.VBox()
-	#APIC
-	self.coverart = gtk.Image()
 	#TIT2
         self.songlabel = gtk.Label("")
         vbox.pack_start(self.songlabel,True,True,0)
 	#TPE1-2
         self.tpe1label = gtk.Label("")
         vbox.pack_start(self.tpe1label,True,True,0)
+
+	#box with other infos
+        hbox0 = gtk.HBox()
+	#APIC
+	self.coverart = gtk.Image()
+        hbox0.pack_start(self.coverart,True,True,0)
 	#TALB
+        vbox0 = gtk.VBox()
         self.talblabel = gtk.Label("")
-        vbox.pack_start(self.talblabel,True,True,0)
+        vbox0.pack_start(self.talblabel,True,True,0)
+	#TRCK
+        self.trcklabel = gtk.Label("")
+        vbox0.pack_start(self.trcklabel,True,True,0)
 	#TIME
-        hboxtm = gtk.HBox()
+        self.hboxtm = gtk.HBox()
         self.timelabel = gtk.Label("")
 	self.timelabel.set_alignment(1,0.5)
-        hboxtm.pack_start(self.timelabel,True,True,0)
+        self.hboxtm.pack_start(self.timelabel,False,True,0)
         self.totaltime = gtk.Label("")
 	self.totaltime.set_alignment(0,0.5)
-        hboxtm.pack_start(self.totaltime,True,True,0)
+        self.hboxtm.pack_start(self.totaltime,True,True,0)
 
-        vbox.pack_start(hboxtm,True,True,0)
+        vbox0.pack_start(self.hboxtm,True,True,0)
+        hbox0.pack_start(vbox0,True,True,0)
+
+        vbox.pack_start(hbox0,True,True,0)
 	
 	# set up fonts
 	if tagfont is not None:
