@@ -52,17 +52,14 @@ class MplayerBackend(PythmBackend):
             self.repeat = False
             self.state = State.STOPPED
             
+            path = self.cfg.get("mplayer","path",None)
             renice = self.cfg.get("mplayer","renice",None)
-            self.mplayer = MPlayer(renice)
+            self.mplayer = MPlayer(path,renice)
             endings = self.cfg.get("mplayer","endings","ogg,mp3")
             self.endings = endings.lower().split(",")
             
             self.filters  = self.cfg.get_array("mplayer","filters")
             
-            self.filematchers = []
-            self.filematchers.append(".*-(?P<artist>.*)-(?P<title>.*)\..*") 
-            self.filematchers.append("(?P<artist>.*)-(?P<title>.*)\..*") 
-            self.filematchers.append("(?P<title>.*)\..*")
             return PythmBackend.startup(self,handler)
         except Exception,e:
             print "could not start mplayer: "+str(e)            
@@ -70,7 +67,6 @@ class MplayerBackend(PythmBackend):
     
     def set_volume(self,newVol):
         """sets new volume"""
-        print "newvol: "+str(newVol)
         self.mplayer.command("volume",newVol,1)
         self.emit(Signals.VOLUME_CHANGED,newVol)
     
@@ -84,7 +80,7 @@ class MplayerBackend(PythmBackend):
     
     
     def play(self, plid=None):
-        """Plays a song from the playlist or starts playing of pleid=None"""
+        """Plays a song from the playlist or starts playing of plid=None"""
         if self.state == State.PAUSED:
             #toggle pause off
             self.mplayer.command("pause")
@@ -95,15 +91,9 @@ class MplayerBackend(PythmBackend):
             if self.current != None:
                 entry = self.current[1]
                 self.emit(Signals.SONG_CHANGED,entry)
-                self.songend = time.time()
-                fn = entry.id
-                array = self.mplayer.innercmd("loadfile '" + fn + "'\n","======",True)
-                #array = self.mplayer.arraycmd("loadfile","======",fn)
-                self.fill_entry(array, entry)
-                
-                if entry.length == -1:
-                    entry.length = self.mplayer.cmd("get_time_length","ANS_LENGTH")
-                self.songend += entry.length
+                self.mplayer.cmd("loadfile '" + entry.id.replace('\'', '\\\'') +"'", "======")
+		self.get_meta_data(entry.id)
+                entry.length = self.mplayer.cmd("get_time_length","ANS_LENGTH")
                 self.emit(Signals.SONG_CHANGED,entry)
                 self.set_state(State.PLAYING)
             else:
@@ -156,6 +146,8 @@ class MplayerBackend(PythmBackend):
             if self.state == State.PLAYING:
                 self.mplayer.command("pause")
                 self.set_state(State.PAUSED)
+            else:
+		self.play()
         except:
             pass
         self.lock.release()
@@ -167,24 +159,13 @@ class MplayerBackend(PythmBackend):
             if self.state == State.PLAYING:
                 #stop does not work??! fake here
                 self.mplayer.command("pause")
+		#then resets to start of playlist
+	        self.current = self.first
             self.set_state(State.STOPPED)
         except:
             pass
         self.lock.release()
 
-    def fill_entry(self,array,entry):
-        """
-        fills entry with track data
-        """
-        for val in array:
-            m = re.match(" Artist\: (?P<value>.*)",val)
-            if(m):
-                entry.artist = m.group("value").strip()
-            m = re.match(" Name\: (?P<value>.*)",val)                
-            if(m):
-                entry.title = m.group("value").strip()
-            
-    
     def browse(self,parentDir=None):
         """
         browses trough the filesystem
@@ -232,10 +213,8 @@ class MplayerBackend(PythmBackend):
         """
         adds a browseEntry to the pl
         """
-        
-        fn = os.path.basename(beId)
-        tpl = self.get_data(fn)
-        entry = PlaylistEntry(beId,tpl[0],tpl[1],-1)
+        tpl = self.get_meta_data(beId)
+        entry = PlaylistEntry(beId,tpl[0],tpl[1],tpl[2],tpl[3])
         
         if self.first == None:
             self.first = [None,entry,None]
@@ -250,6 +229,9 @@ class MplayerBackend(PythmBackend):
         self.entrydict[entry.id] = self.last
         
         self.emit_pl_changed()
+
+	if self.current is not None:
+	    self.emit(Signals.SONG_CHANGED,self.current[1])
         
     def emit_pl_changed(self):
         pl = []
@@ -260,24 +242,37 @@ class MplayerBackend(PythmBackend):
             
         self.emit(Signals.PL_CHANGED,pl)
         
-    def get_data(self,file):
-        """
-        returns (artist,title) from regex filename match
-        """
-        for r in self.filematchers:
-            m = re.match(r,os.path.basename(file))
-            if(m):
-                try:
-                    art = m.group("artist").strip()
-                except:
-                    art = "unknown"
-                try:
-                    tit = m.group("title").strip()
-                except:
-                    tit = "unknown"
-                return (art,tit)
-        return ("",file)
+# -----get meta_data with mutagen-----------------------
+# TODO: retrieve also coverart
+
+    def get_meta_data(self, file):
+	import mutagen, mutagen.id3
+        try:
+	    id3 = mutagen.id3.ID3(file, translate=False)
+        except:
+            return ("",os.path.basename(file),"")
+        try:
+	    art = id3.get('TPE1')
+        except:
+            art = "unknown"
+        try:
+	    tit = id3.get('TIT2')
+        except:
+            tit = "unknown"
+        try:
+	    alb = id3.get('TALB')
+        except:
+            alb = "unknown"
+	#ptt cover
+        try:
+	    pic = id3.getall('APIC')
+        except:
+            pic = None
+	
+        return (art,tit,alb,pic)
     
+# ---------------------------------------------------
+
     def remove(self,plid):
         """removes entry from pl"""
         tpl = self.entrydict[plid]
@@ -326,16 +321,18 @@ class MplayerBackend(PythmBackend):
     def seek(self,pos):
         """seeks to pos in seconds"""
         if self.state == State.PLAYING:
-            self.songend = time.time() + (self.current[1].length - pos)
             self.mplayer.command("seek",pos,2)
+	    #ptt: TODO try to seek in percent:
+            ###self.mplayer.command("seek",pos,1)
     
     def shutdown(self):
         """
         shuts down backend
         """
         try:
-            PythmBackend.shutdown(self)
+            #PythmBackend.shutdown(self)
             self.mplayer.quit()
+            PythmBackend.shutdown(self)
         except:
             pass
         
@@ -350,11 +347,19 @@ class MplayerBackend(PythmBackend):
         """
         clears playlist
         """
+	# save playing media
+        if self.state != State.STOPPED:
+            playing_entry = self.current[1]
         self.entrydict = {}
         self.first = None
         self.current = None
         self.last = None
+	# restore playing media
+	if playing_entry is not None:
+            self.add(playing_entry.id)
         self.emit_pl_changed()
+	if playing_entry is not None:
+            self.emit(Signals.SONG_CHANGED,playing_entry)
     
     def add_dir(self,dir_to_add):
         """
@@ -380,28 +385,27 @@ class MplayerBackend(PythmBackend):
             self.lock.acquire()
             if self.state == State.PLAYING:
                 pos = self.mplayer.cmd("get_time_pos",'ANS_TIME_POS')
+   #             pos = self.mplayer.cmd("get_percent_pos",'ANS_PERCENT_POS')
                 
                 if self.current != None:
                     length = self.current[1].length
-                #print "Pos: " + str(pos)
                 if is_numeric(pos):
                     self.emit(Signals.POS_CHANGED, pos)
+		# TODO precache following media file
+		#    if length-15 > pos:
+		#	self.next(True)
                 else:
-                    if time.time() > self.songend:
-                        self.songend = time.time() + 15
-                        self.next()
+                    self.next()
         except:
             print "unexpected error in check_state", sys.exc_info()[0]
         self.lock.release()
             
     def populate(self):
         """populates the player"""
-        self.set_volume(80)
+        self.set_volume(90)
         self.set_repeat(False)        
         self.set_random(False)
         self.set_state(State.STOPPED)
         self.emit_pl_changed()
         self.browse()
 
-        
-        

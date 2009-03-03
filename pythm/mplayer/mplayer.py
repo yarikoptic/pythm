@@ -5,6 +5,8 @@ import time
 import sys
 from threading import Lock
 
+from pythm.config import PythmConfig
+
 #http://code.activestate.com/recipes/542195/
 
 class MPlayer(object):
@@ -29,10 +31,11 @@ class MPlayer(object):
             - minimal return type parsing
     """
 
-    exe_name = 'mplayer' if os.sep == '/' else 'mplayer.exe'
+    def __init__(self,path=None,niceval=None):
+        if path is None:
+            path = 'mplayer' if os.sep == '/' else 'mplayer.exe'
 
-    def __init__(self,niceval=None):
-        args = [self.exe_name, '-slave', '-quiet', '-idle','-nolirc']
+        args = [path, '-slave', '-quiet', '-idle', '-nolirc', '-osdlevel', '0']
         self._mplayer = subprocess.Popen(args,
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=1)
         

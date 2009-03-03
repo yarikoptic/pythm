@@ -2,6 +2,7 @@ import pygtk
 pygtk.require('2.0')
 import gtk
 import gobject
+import os
 from page import Page
 from pythm.lang import _
 from pythm.backend import Signals
@@ -37,6 +38,9 @@ class PageBackend(Page):
         if self.cfg.get_backend() != None:
             self.start_backend(self.cfg.get_backend())
         
+	#ptt
+        self.cfg.get_backend().connect(Signals.RANDOM_CHANGED,self.random_changed)
+        self.cfg.get_backend().connect(Signals.REPEAT_CHANGED,self.repeat_changed)
         
         self.refresh()
         self.row_selected(None)
@@ -45,7 +49,6 @@ class PageBackend(Page):
     def start_backend(self,backend):
         if self.mgr.start(backend,self.gtkcallback):
             self.mgr.connect(backend)
-            
 
     
     def btn_start_clicked(self,btn):
@@ -63,7 +66,6 @@ class PageBackend(Page):
     def btn_refresh_clicked(self,btn):
         self.refresh()
         
-        
     def refresh(self):
         self.model.clear()
         for backend in self.mgr.get_backends():
@@ -75,7 +77,6 @@ class PageBackend(Page):
                 conn ="disconnected"
                 
             self.model.append([backend,backend.name,status,conn])
-        
         
     def row_selected(self,path):
         backend = self.get_selected()
@@ -117,6 +118,30 @@ class PageBackend(Page):
         sc.add(self.tv)
         vbox.pack_start(sc,False,False,0)
         
+	#ptt
+        #random, repeat
+        hbox3 = gtk.HBox()
+        self.random = gtk.CheckButton(label="random")
+        hbox3.pack_start(self.random,True,False,0)
+        self.repeat = gtk.CheckButton(label="repeat")
+        hbox3.pack_start(self.repeat,True,False,0)
+        self.random.connect("toggled",self.on_random)
+        self.repeat.connect("toggled",self.on_repeat)
+        vbox.add(hbox3)
+
+        #enable headphones
+        hbox4 = gtk.HBox()
+        self.headphones = gtk.CheckButton(label="headphones on")
+        self.headphones.connect("toggled",self.headphones_switch)
+        hbox4.pack_start(self.headphones,True,False,0)
+        vbox.add(hbox4)
+
+	# ptt version label
+	self.versionlabel = gtk.Label()
+	self.versionlabel.set_alignment(1,1)
+	self.versionlabel.set_markup("<span size=\"x-small\">"+"0.5.1-ptt5"+"  </span>")
+        vbox.pack_start(self.versionlabel,False,False,0)
+        
         return vbox
     
     def gtkcallback(self,func,*args):
@@ -125,3 +150,25 @@ class PageBackend(Page):
         """
         gobject.idle_add(func,*args)
     
+    def on_random(self,widget):
+        self.cfg.get_backend().set_random(widget.get_active())
+        
+    def on_repeat(self,widget):
+        self.cfg.get_backend().set_repeat(widget.get_active())
+
+    def random_changed(self,newRand):
+        self.random.set_active(newRand)
+        
+    def repeat_changed(self,newRept):
+        self.repeat.set_active(newRept)
+
+    def headphones_switch(self,widget):
+	if widget.get_active():
+            switch_on  = self.cfg.get("cmd","headphones_on",None)
+	    if switch_on is not None:
+	        os.system(switch_on)
+	else:
+            switch_off = self.cfg.get("cmd","headphones_off",None)
+	    if switch_off is not None:
+	        os.system(switch_off)
+        

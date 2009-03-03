@@ -6,25 +6,7 @@
 backends=mpd,mplayer
 # the default backend to use, can be either
 # mpd or mplayer, or omitted
-backend=mplayer
-
-#defaults for openmoko:
-size=480,640
-#tagfont=Sans 7
-#listfont=Sans 7
-
-#settings for computer:
-#size=480,640
-tagfont=Sans 20
-listfont=Sans 12
-browsefont=Sans 12
-
-# tells whether to show path in browse tab (True | False)
-showpath=True
-
-[cmd]
-#headphones_on=alsactl restore -f /etc/pythm/hon.state
-#headphones_off=alsactl restore -f /etc/pythm/hoff.state
+#backend=mpd
 
 # mpd specific settings
 [mpd]
@@ -37,17 +19,13 @@ port=6600
 
 # mplayer settings
 [mplayer]
-# path to mplayer binary
-#path=/usr/bin/mplayer
-
 # renice val for mplayer process
 renice=19
 
 # directory containing music (the start folder for the browser)
-##musicdir=/home/cds/
-musicdir=/home/cds/snd
+musicdir=~
 # allowed file endings in browse mode, comma separated
-endings=ogg,mp3,avi
+endings=ogg,mp3
 # filters to exclude in file browser. applied to files and directories
 # using regular expressions. use filtersN for more entries
 # default is to ignore all elements that start with a ".".

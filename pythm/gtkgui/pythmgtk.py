@@ -1,7 +1,7 @@
 import pygtk
 pygtk.require('2.0')
 import gtk
-
+import signal
 
 from pagelist import *
 from pageplay import *
@@ -28,20 +28,33 @@ class PythmGtk:
         gtk.main_quit()
 
     def __init__(self):
+	# install signal handler to quit on Ctrl-C
+	signal.signal(signal.SIGINT, self.destroy)
+
         # create a new window
         gtk.gdk.threads_init()
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
-        self.window.resize(480,640)
-        self.window.set_title(_("pythm"))
+
+	#ptt : try to load size from config file, else go fullscreen
+        self.cfg = PythmConfig()
+
+        size = self.cfg.get_commaseparated("pythm","size","0,0")
+	if (int(size[0]) > 0):
+	    self.window.resize(int(size[0]),int(size[1]))
+	else:
+            self.window.maximize()
+
+        #self.window.set_title(_("pythm"))
+        self.window.set_title("Pythm")
 
         self.window.connect("delete_event", self.delete_event)
         self.window.connect("destroy", self.destroy)
         
-        self.cfg = PythmConfig()
-        
         self.vbox = gtk.VBox()
         self.tabs = gtk.Notebook()
         self.tabs.set_property("homogeneous",True)
+	#ptt
+        self.tabs.set_property("tab_vborder",15)
         play = PagePlay()
         img = gtk.image_new_from_stock(gtk.STOCK_MEDIA_PLAY, gtk.ICON_SIZE_BUTTON)
         img.set_padding(3,3)
@@ -60,14 +73,15 @@ class PythmGtk:
         self.tabs.append_page(PageBackend(),img)
 
         self.vbox.add(self.tabs)
-        
     
         # This packs the button into the window (a GTK container).
         self.window.add(self.vbox)
         
         # and the window
         self.window.show_all()
+
+	#ptt : on opening switch directly to browse tab
+        self.tabs.set_current_page(2)
             
         gtk.main()
 
-        

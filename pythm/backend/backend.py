@@ -208,11 +208,13 @@ class State:
 
 
 class PlaylistEntry:
-    def __init__(self, id, artist, title, length):
+    def __init__(self, id, artist, title, album, cover):
         self.id = id
         self.artist = artist
         self.title = title
-        self.length = length
+        self.album = album
+        self.cover = cover
+        self.length = -1
         
     def __str__(self):
         if len(self.artist) > 0 and len(self.title) > 0:
@@ -270,6 +272,8 @@ class HelperThread(Thread):
                 self.lock.acquire()
                 if len(self.cmds) > 0:
                     cmd = self.cmds.pop()
+            except Exception, e:
+                print "error executing:" + str(e)
             finally:
                 self.lock.release()
             if cmd != None:
