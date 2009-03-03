@@ -157,7 +157,7 @@ class GPlayer:
         """
         Seeks the player to the given time in seconds.
         """
-        self.player.seek_simple(self.timeFmt, gst.SEEK_FLAG_FLUSH, iSeconds * 10000000)
+        self.player.seek_simple(self.timeFmt, gst.SEEK_FLAG_FLUSH, iSeconds * 1000000000)
         
 class MediaTypes:
     """

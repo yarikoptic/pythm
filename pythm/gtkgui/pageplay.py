@@ -20,7 +20,8 @@ from gtkhelper import ImageButton
 class PagePlay(Page):
     def __init__(self):
         self.duration = 0.0       # Druation of current song.
-        self.doPosUpdates = True  # Set song position from backend in slider.
+        self.posBarPressed = False  # Set song position from backend in slider.
+        self.posBarDownVal = -1
 
         Page.__init__(self);
         self.cfg.get_backend().connect(Signals.VOLUME_CHANGED,self.volume_changed)
@@ -87,14 +88,12 @@ class PagePlay(Page):
         self.pos_changed(0)
 
     def pos_changed(self,newPos):
-        self.posevent = True
         newPos = int(newPos)
 
         # Set the new value in the controls.
-        if (self.doPosUpdates):
+        if (not self.posBarPressed):
             self.pos_scale.set_value(newPos)
         self.set_times_label(newPos)
-        self.posevent = False
 
     def random_changed(self,newRand):
         self.random.set_active(newRand)
@@ -107,11 +106,11 @@ class PagePlay(Page):
         self.vol_scale.set_value(newVolume)
         self.volevent = False
 
-    """
-    " Set the times label string based on current and
-    " total duration.
-    """
     def set_times_label(self, position):
+        """
+        Set the times label string based on current and
+        total duration.
+        """
         lbl = format_time(position) + " / " + format_time(self.duration)
         self.timelabel.set_label(lbl)
 
@@ -177,21 +176,22 @@ class PagePlay(Page):
             self.cfg.get_backend().set_volume(range.get_value())
 
 
-    """
-    " Event when the position slider is touched.
-    " Set a flag to ignore position updates from the backend.
-    " Thise makes using the control easier.
-    """
     def on_pos_press(self, widget, event):
-        self.doPosUpdates = False
+        """
+        Event when the position slider is touched.
+        Set a flag to ignore position updates from the backend.
+        This makes using the control easier.
+        """
+        self.posBarPressed = True
+        self.posBarDownVal = widget.get_value()
 
-    """
-    " Event when the position slider is released.
-    " Release position update ignore.
-    """
     def on_pos_release(self, widget, event):
-        self.doPosUpdates = True
+        """
+        Event when the position slider is released.
+        Release position update ignore.
+        Seek song to new position.
+        """
+        self.posBarPressed = False
+        if (widget.get_value() != self.posBarDownVal):
+            self.cfg.get_backend().seek(widget.get_value())
 
-    def on_pos_change(self,range):
-        if self.posevent == False:
-            self.cfg.get_backend().seek(range.get_value())

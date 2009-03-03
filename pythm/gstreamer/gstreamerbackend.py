@@ -62,7 +62,6 @@ class GStreamerBackend(PythmBackend):
         self.songTimer	    = 0
         self.songLength	    = 0
         self.pollTimer	    = 0
-        self.sendUpdates    = True	# Send position update events.
         self.songChanged    = False	# Flag for async song changed signal emmitt.
         self.players	    = [None, None] # Gstreamer players.
         self.songIds        = [None, None] # ID's of songs currenlty loaded into their respective players.
@@ -473,6 +472,8 @@ class GStreamerBackend(PythmBackend):
             if (self.state == State.PLAYING):
                 self.players[self.curPlayer].set_state(gst.STATE_PAUSED)
                 self.set_state(State.PAUSED)
+            elif (self.state == State.PAUSED):
+                self.play()
         except:
             pass
 
@@ -659,24 +660,17 @@ class GStreamerBackend(PythmBackend):
     " seeks to pos in seconds
     """
     def seek(self, pos):
-        if (self.state != State.PLAYING or self.state != State.PAUSED): return
+        if (self.state != State.PLAYING and self.state != State.PAUSED): return
         if (pos > self.current[1].length): return
-
-        # Lock down updates. Seeking can take time, and
-        # we do not want the current song position to change
-        # in the UI while we are seeking.
-        self.sendUpdates = False
 
         try :
             player = self.players[self.curPlayer]
-            player.seek_simple(self.timeFmt, gst.SEEK_FLAG_FLUSH, pos * 1000000000)
+            player.seek(pos)
             self.songTimer = pos
             logger.debug("Seeking to %s" % format_time(pos))
 
         except Exception,e:
             logger.error("Failed to seek to %s: %s" % (format_time(pos), e))
-
-        self.sendUpdates = True
 
     """
     " shuts down backend
@@ -751,8 +745,8 @@ class GStreamerBackend(PythmBackend):
                 p = self.get_position(self.players[self.curPlayer])
                 if (p > -1): self.songTimer = p
 
-                if (self.sendUpdates):
-                    self.emit(Signals.POS_CHANGED, self.songTimer)
+                # Send updated song time to GUI.
+                self.emit(Signals.POS_CHANGED, self.songTimer)
 
                 self.pollTimer = 0
 
