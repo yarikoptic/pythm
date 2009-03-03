@@ -131,7 +131,7 @@ class PagePlay(Page):
         self.pos_scale.set_value_pos(1)
         self.pos_scale.connect("button-press-event", self.on_pos_press)
         self.pos_scale.connect("button-release-event", self.on_pos_release)
-        self.pos_scale.connect("value-changed",self.on_pos_change)
+        #self.pos_scale.connect("value-changed",self.on_pos_change)
         self.pos_scale.set_increments(5,10)
         self.pos_scale.set_update_policy(gtk.UPDATE_DISCONTINUOUS)
         hbox2.add(self.pos_scale)
