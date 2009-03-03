@@ -534,7 +534,10 @@ class GStreamerBackend(PythmBackend):
     """
     def browse(self,parentDir=None):
         if parentDir is None:
-            parentDir = os.path.expanduser(self.cfg.get("gstreamer","musicdir","~"))
+            szPath = self.cfg.get("gstreamer","musicdir","~")
+            if (not os.path.exists(szPath)):
+                szPath = "~"
+            parentDir = os.path.expanduser(szPath)
         ret = []
 
         if parentDir != "/":
