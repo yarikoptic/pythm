@@ -9,6 +9,8 @@
 """ TODO: Module description """
 
 from pythm.backend import *
+logger.debug("Importing mplayer backend")
+
 import os
 import re
 import sys

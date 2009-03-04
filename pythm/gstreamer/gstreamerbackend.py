@@ -6,13 +6,15 @@
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """ TODO: Module description """
 
+from pythm.backend import *
+logger.debug("Importing gstreamer backend")
+
 import os, re, sys, time
 import ecore.evas
 import dbus
 import pygst
 import gst
 from gplayer import GPlayer, MediaTypes
-from pythm.backend import *
 from pythm.functions import *
 from threading import Thread, Lock
 
