@@ -579,7 +579,7 @@ class GStreamerBackend(PythmBackend):
     def add(self,beId):
         fn    = os.path.basename(beId)
         tpl   = get_tags_from_file(fn)
-        entry = PlaylistEntry(beId,tpl[0],tpl[1],-1)
+        entry = PlaylistEntry(beId,tpl[0],tpl[1],-1,None,None)
         entry.length = 0
 
         if self.first == None:

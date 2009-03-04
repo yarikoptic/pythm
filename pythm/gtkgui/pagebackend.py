@@ -47,7 +47,6 @@ class PageBackend(Page):
         if self.cfg.get_backend() != None:
             self.start_backend(self.cfg.get_backend())
 
-
         self.refresh()
         self.row_selected(None)
         self.set_sensitive(True)

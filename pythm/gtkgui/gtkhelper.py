@@ -35,3 +35,4 @@ def get_scrolled_widget():
         return sc
     else:
         return mokoui.FingerScroll()
+

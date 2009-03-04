@@ -440,11 +440,13 @@ class PlayDirection:
     RANDOM = 3
 
 class PlaylistEntry:
-    def __init__(self, id, artist, title, length):
+    def __init__(self, id, artist, title, length, album, cover):                         
         self.id = id
-        self.artist = artist
-        self.title = title
-        self.length = length
+        self.artist = artist                                 
+        self.title = title                                                   
+        self.length = length                                                
+        self.album = None
+        self.cover = None
 
     def __str__(self):
         if len(self.artist) > 0 and len(self.title) > 0:

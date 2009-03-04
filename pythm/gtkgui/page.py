@@ -27,7 +27,8 @@ class Page(gtk.VBox):
         self.cmdimg = gtk.image_new_from_stock(gtk.STOCK_NETWORK, gtk.ICON_SIZE_LARGE_TOOLBAR)
         self.cmdimg.set_padding(3,3)
         self.cmdimg.set_sensitive(False)
-        self.btnbox.pack_start(self.cmdimg,False,False,0)
+        #to be loaded only when mpd activated (to be put in conf file?
+        #self.btnbox.pack_start(self.cmdimg,False,False,0)
 
     def check_cmdstate(self,state):
         self.cmdimg.set_sensitive(not state)

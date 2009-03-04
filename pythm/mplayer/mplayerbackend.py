@@ -347,7 +347,7 @@ class MplayerBackend(PythmBackend):
 
         fn = os.path.basename(beId)
         tpl = get_tags_from_file(fn)
-        entry = PlaylistEntry(beId,tpl[0],tpl[1],-1)
+        entry = PlaylistEntry(beId,tpl[0],tpl[1],-1,None,None)
 
         if self.first == None:
             self.first = [None,entry,None]

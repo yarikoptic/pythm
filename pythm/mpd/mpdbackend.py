@@ -268,7 +268,7 @@ class MpdBackend(PythmBackend):
             if tit == "" and art == "":
                 tit = os.path.basename(dict["file"])
             tim = int(dict["time"])
-            return PlaylistEntry(id,art,tit,tim)
+            return PlaylistEntry(id,art,tit,tim,None,None)
         except:
             print "get_entry: ", dict
             return None
