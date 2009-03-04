@@ -12,7 +12,9 @@
 Helper functions for pythm
 """
 
-import os,re
+import os
+import re
+import random
 from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
 from mutagen.oggvorbis import OggVorbis
@@ -103,3 +105,20 @@ def read_audio_tags(entry, logger):
         if (logger != None):
                 logger.warn("Failed to read audio tag data: %s" % e)
 
+def randomize_entrydict(inDict):
+    """
+    Bulids a randomized list of playlist entries from the input dictionary
+    of PlaylistEntry's.
+    \param inDict Input dictionary of playlist entries.
+    \return List of playlist entries in random order.
+    """
+    out = []
+
+    if (inDict == None): return out
+
+    for id, entry in inDict.iteritems():
+        out.append(entry)
+
+    random.shuffle(out)
+
+    return out
