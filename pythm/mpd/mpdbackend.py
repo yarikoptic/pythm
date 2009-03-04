@@ -8,8 +8,10 @@
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """ TODO: Module description """
 
-import mpdlib2
 from pythm.backend import *
+logger.debug("Importing mpd backend")
+
+import mpdlib2
 import os
 import sys
 import traceback
