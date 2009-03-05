@@ -32,6 +32,8 @@ ASYNC_LOAD_WAIT_TIME = 3.5
 # Time to add to elapsed time when determining if song is over.
 # This is to get a smooth transition.
 NEXT_SONG_FUDGE_TIME = 0.45
+# Time into song at after which previous will go to start of song.
+SONG_COMMIT_TIME = 4
 
 class AsyncLoader(Thread):    
     """
@@ -423,12 +425,14 @@ class GStreamerBackend(PythmBackend):
         that song entry.
         """
         nextSong = None
+
+        #print "*** choose: " + str(dir)
         
         # Random handling.
         if (self.random):
             # If the current song is some number of seconds in,
             # back should restart the song.
-            if (dir == PlayDirection.BACKWARD and self.songTimer > 2):
+            if (dir == PlayDirection.BACKWARD and self.songTimer > SONG_COMMIT_TIME):
                 nextSong = self.current
             else:
                 nextSong = self.get_random(dir)
@@ -449,7 +453,7 @@ class GStreamerBackend(PythmBackend):
         elif (dir == PlayDirection.BACKWARD):
             # If the current song is some number of seconds in,
             # back should restart the song.
-            if (self.songTimer > 2):
+            if (self.songTimer > SONG_COMMIT_TIME):
                 nextSong = self.current
             else:
                 nextSong = self.current[0]
@@ -474,6 +478,8 @@ class GStreamerBackend(PythmBackend):
         iNumSongs = len(self.randSongs)
         # And do a final sanity check.
         if (iNumSongs < 1): return self.current
+
+        #print "*** rand before: " + str(self.randSongIdx)
         
         # Choose the list increment appropriately (default is same song).
         iIncr = 0
@@ -481,6 +487,8 @@ class GStreamerBackend(PythmBackend):
         elif (dir == PlayDirection.BACKWARD): iIncr = -1
             
         self.randSongIdx = (self.randSongIdx + iIncr) % iNumSongs
+
+        #print "*** rand after: " + str(self.randSongIdx)
 
         return self.randSongs[self.randSongIdx]
 
