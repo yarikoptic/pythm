@@ -17,8 +17,10 @@ import gst
 from gplayer import GPlayer, MediaTypes
 from pythm.functions import *
 from threading import Thread, Lock
+from pythm.constants import *
 
-
+CFG_SECTION_GSTREAMER = "gstreamer" # Config file gstreamer section name.
+    
 # Default volume level.
 # TODO DMR save this somewhere.
 DEFAULT_VOLUME = 75
@@ -94,9 +96,9 @@ class GStreamerBackend(PythmBackend):
             self.my_init_dbus()
 
             # Load file browser preferences.
-            endings 		= self.cfg.get("gstreamer","endings","ogg,mp3")
-            self.endings 	= endings.lower().split(",")
-            self.filters  	= self.cfg.get_array("gstreamer","filters")
+            endings = self.cfg.get(CFG_SECTION_BROWSER, CFG_SETTING_FILEENDINGS, "ogg,mp3")
+            self.endings = endings.lower().split(",")
+            self.filters = self.cfg.get_array(CFG_SECTION_BROWSER, CFG_SETTING_FILEFILTERS)
 
             # Init gstreamer.
             self.gstreamer_init()
@@ -595,7 +597,7 @@ class GStreamerBackend(PythmBackend):
         Browses trough the filesystem for files that can be added.
         """
         if parentDir is None:
-            szPath = self.cfg.get("gstreamer","musicdir","~")
+            szPath = self.cfg.get(CFG_SECTION_BROWSER, CFG_SETTING_MUSICDIR, "~")
             if (not os.path.exists(szPath)):
                 szPath = "~"
             parentDir = os.path.expanduser(szPath)

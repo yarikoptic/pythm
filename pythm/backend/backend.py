@@ -10,6 +10,7 @@
 
 from pythm.config import PythmConfig
 from threading import Thread,Lock
+from pythm.constants import *
 import time
 import logging
 import dbus
@@ -18,13 +19,6 @@ import ecore
 
 UPDATE_TIME = 0.1 # Time between update loops.
 RESUME_FROM_PHONE_TIME = 2 # Time before resuming after phone call suspend.
-
-CFG_SECTION_PYTHM = "pythm" # Config file pythm section name.
-CFG_SETTING_NOSUSPEND = "no_suspend" # Config file setting name for no suspend during playback.
-CFG_SETTING_SUSPENDIFACE = "suspend_iface" # Config file setting name for no suspend dbus interface.
-
-SUSPEND_IFACE_FSO = "fso" # Name of config file suspend interface setting for frameworkd.
-SUSPEND_IFACE_E = "e" # Name of config file suspend interface setting for enlightenment.
 
 logger = logging.getLogger("pythm")
 logging.basicConfig(level    = logging.CRITICAL,
