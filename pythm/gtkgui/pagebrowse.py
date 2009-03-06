@@ -59,7 +59,8 @@ class PageBrowse(Page):
         self.path = path
         self.model.clear()
         for f in list:
-            self.model.append([f,f.caption])
+	    if f.caption != '..' or self.cfg.get("pythm","showparentdir",True) == 'True':
+                self.model.append([f,f.caption])
 	if self.cfg.get("pythm","showpath",False) == 'False':
             self.tv.get_column(0).set_title(os.path.basename(path).replace("_","__"))
 	else:
