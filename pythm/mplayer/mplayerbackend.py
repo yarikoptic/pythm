@@ -186,7 +186,10 @@ class MplayerBackend(PythmBackend):
             fullpath = os.path.join(parentDir,file)
             if os.path.isdir(fullpath):
                 dir = True
-            fullpath = unicode(fullpath,sys.getfilesystemencoding()).encode("utf-8")
+	    try:
+                fullpath = unicode(fullpath,sys.getfilesystemencoding()).encode("utf-8")
+	    except:
+		pass
             
             if self.filter(file,dir):
                 ret.append(BrowserEntry(fullpath,file,dir))
@@ -250,34 +253,21 @@ class MplayerBackend(PythmBackend):
         self.emit(Signals.PL_CHANGED,pl)
         
 # -----get meta_data with mutagen-----------------------
-# TODO: retrieve also coverart
 
     def get_meta_data(self, file):
 	import mutagen, mutagen.id3
         try:
 	    id3 = mutagen.id3.ID3(file, translate=False)
+	    art = id3.get('TPE1')
+	    tit = id3.get('TIT2')
+	    alb = id3.get('TALB')
+	    trk = id3.get('TRCK')
+            if self.cfg.get("mplayer","coverart",'True') == 'True':
+	        pic = id3.getall('APIC')
+	    else:
+	        pic = None
         except:
             return ("",os.path.basename(file),"")
-        try:
-	    art = id3.get('TPE1')
-        except:
-            art = "unknown"
-        try:
-	    tit = id3.get('TIT2')
-        except:
-            tit = "unknown"
-        try:
-	    alb = id3.get('TALB')
-        except:
-            alb = "unknown"
-        try:
-	    trk = id3.get('TRCK')
-        except:
-            trk = "1"
-        try:
-	    pic = id3.getall('APIC')
-        except:
-            pic = None
 	
         return (art,tit,alb,trk,pic)
     
