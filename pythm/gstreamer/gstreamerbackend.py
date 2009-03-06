@@ -33,7 +33,7 @@ ASYNC_POLL_TIME = 1.0
 ASYNC_LOAD_WAIT_TIME = 3.5
 # Time to add to elapsed time when determining if song is over.
 # This is to get a smooth transition.
-NEXT_SONG_FUDGE_TIME = 0.45
+NEXT_SONG_FUDGE_TIME = 0.25
 # Time into song at after which previous will go to start of song.
 SONG_COMMIT_TIME = 4
 
@@ -89,8 +89,8 @@ class GStreamerBackend(PythmBackend):
 
             self.gotpos 	= False
 
-            self.random 	= False
-            self.repeat 	= False
+            self.bRandom 	= False
+            self.bRepeat 	= False
 
             # Hook into DBUS.
             self.my_init_dbus()
@@ -177,6 +177,7 @@ class GStreamerBackend(PythmBackend):
 
         if (t == gst.MESSAGE_STATE_CHANGED):
             #newState = msg.parse_state_changed()[1]
+            #logger.debug("Got state changed message for player %i, state %i" % (playerId, newState))
             pass
 
         # End of the stream. Stop the player.
@@ -236,7 +237,7 @@ class GStreamerBackend(PythmBackend):
         Set to play songs in a random order.
         Fires the random state changed signal.
         """
-        self.random = rand
+        self.bRandom = rand
         
         # If engaging random mode, build list of random songs.
         if (rand):
@@ -252,7 +253,7 @@ class GStreamerBackend(PythmBackend):
         Set to repeat the current song.
         Fires the repeat state change signal.
         """
-        self.repeat = rept
+        self.bRepeat = rept
         self.emit(Signals.REPEAT_CHANGED,rept)
 
     def load_song(self, playerId, songEntry):
@@ -281,6 +282,7 @@ class GStreamerBackend(PythmBackend):
                 return False
 
             player.set_file(fn)
+
             # Can only get the track length while the player is playing.
             player.set_state(gst.STATE_PLAYING)
 
@@ -339,8 +341,10 @@ class GStreamerBackend(PythmBackend):
                 # New song to play is same a current song (e.g., repeat)
                 # so restart current song without loading.
                 if (songToPlay[1].id == self.songIds[self.curPlayer]):
+                    #logger.debug("*** playing same song")
                     self.players[self.curPlayer].set_state(gst.STATE_NULL)
                     self.players[self.curPlayer].set_state(gst.STATE_PLAYING)
+                    #self.seek(0.1)
 
                 # Otherwise, play the selected song.
                 elif (songToPlay != None):
@@ -428,35 +432,30 @@ class GStreamerBackend(PythmBackend):
         """
         nextSong = None
 
-        # Random handling.
-        if (self.random):
-            # If the current song is some number of seconds in,
-            # back should restart the song.
+        if (self.current != None):
+            # If repeating, use same song.
+            # But allow back to still work.                         
+            if (dir == PlayDirection.CURRENT):  
+                return self.current
+            # If the current song is some number of seconds in,                    
+            # back should restart the song.                                        
             if (dir == PlayDirection.BACKWARD and self.songTimer > SONG_COMMIT_TIME):
-                nextSong = self.current
-            else:
-                nextSong = self.get_random(dir)
-            return nextSong
+                return self.current
+
+        # Random handling.
+        if (self.bRandom):
+            return self.get_random(dir)
             
         # Normal playback handling.
         if (self.current is None):
             nextSong = self.first
-
-        # If repeating, use same song.
-        elif (self.repeat or dir == PlayDirection.CURRENT):
-            nextSong = self.current
 
         elif (dir == PlayDirection.FORWARD):
             nextSong = self.current[2]
             if (nextSong == None): nextSong = self.first
 
         elif (dir == PlayDirection.BACKWARD):
-            # If the current song is some number of seconds in,
-            # back should restart the song.
-            if (self.songTimer > SONG_COMMIT_TIME):
-                nextSong = self.current
-            else:
-                nextSong = self.current[0]
+            nextSong = self.current[0]
             if (nextSong == None): nextSong = self.last
 
         return nextSong
@@ -507,6 +506,13 @@ class GStreamerBackend(PythmBackend):
         Advances to the previous song in Playlist
         """
         nextSong = self.choose_song(PlayDirection.BACKWARD)
+        self.act_on_next_prev(nextSong)
+
+    def repeat(self):
+        """
+        Handles advancing to the beginning of the current song.
+        """
+        nextSong = self.choose_song(PlayDirection.CURRENT)
         self.act_on_next_prev(nextSong)
 
     def act_on_next_prev(self, newSong):
@@ -837,7 +843,9 @@ class GStreamerBackend(PythmBackend):
             # and advance to the next. Do not stop the current song
             # just yet for a smooth cross fade.
             if (self.songTimer + elapsedTime + NEXT_SONG_FUDGE_TIME >= self.songLength):
-                  self.next(False)
+                  # Handle playing of same song if repeat set.
+                  if (self.bRepeat): self.repeat()
+                  else: self.next(False)
 
         except Exception,e:
             logger.error("Unexpected error in check_state: %s" % str(e))
