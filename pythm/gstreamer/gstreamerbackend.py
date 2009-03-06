@@ -600,6 +600,8 @@ class GStreamerBackend(PythmBackend):
         """
         if parentDir is None:
             szPath = self.cfg.get(CFG_SECTION_BROWSER, CFG_SETTING_MUSICDIR, "~")
+            # Expand the path since it might contain ~
+            szPath = os.path.expanduser(szPath)
             if (not os.path.exists(szPath)):
                 szPath = "~"
             parentDir = os.path.expanduser(szPath)
