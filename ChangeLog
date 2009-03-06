@@ -1,0 +1,73 @@
+- pythm (0.5.1-ptt)
+	
+    ptt6:
+	mplayerbackend:
+	* hack to bypass file names with exotic encodings
+
+	configuration file/gtkgui (section [pythm]):
+	* added option to show/hide '..' entry in pagebrowse
+	* added option to load/ignore coverart
+
+	gtkgui pageplay:
+	* reduced volume slider's available range to (50,97)
+	* force a redraw of title label when changing song
+
+    ptt5:
+	* added mutagen to sources (mp3 id3 tags reader)
+
+	gtkgui pageplay/mplayerbackend:
+	* added coverart and reworked layout if cover is there
+	* added track number
+	* now play() doesn't loop in itself no more
+
+    ptt4:
+	mplayerbackend:
+	* decoding of mp3 id3 tags, usgin mutagen (get_meta_data)
+	* removed tag parsing (to be readded later for files w/out tags)
+	* expanded PlaylistEntry to contain id3 tags
+	* stop now resets to begin of playlist
+	* changed end of song->next timings (check_state)
+	* various code enhancements
+
+	configuration file:
+	* option for command to aenable/disable headphones (section [cmd])
+	* option to set mplayer binary path (section [mplayer])
+
+	configuration file/gtkgui (section [pythm]):
+	* option to pre-set size of pythm window
+	* options to be able to use bigger fonts in pageplay/list and browse
+	* option to control pagebrowse header text
+
+	gtkgui:
+	* resized gtk.notebook header (was little for my thumbs)
+	* removed computer activity icon (bottom left one)
+
+	gtkgui pageplay:
+	* added artist, album, tot.length tags
+	* collapsed play and pause buttons to pauseplay button
+	* reworked a little the layout for new tags
+	* inverted order of volume and position sliders
+
+	gtkgui pagelist:
+	* removed length column
+	* moved Artist after Title column
+	* added a status column, to indicate playing song
+	* removed '-' button
+	* when cleaning list, retain playing song, if there is one
+
+	gtkgui pagebrowse:
+	* added play button (same as '+', should start directly playing)
+	* add button when inside a directory, adds the directory itself
+	* removed dir column and file/dir icons from rows
+	* changed browse and add icons
+
+	gtkgui pageplay/pagebackend:
+	* moved random and repeat options to pagebackend/settings gui
+	* added 'headphones on' option
+	* added a little version label to pagebackend tab
+
+    ptt
+	mplayerbackend:
+	* corrected quote bug #192 (escaped quotes in filename)
+	* corrected volume bug #129 (added -osdlevel 0 to mplayer options)
+
