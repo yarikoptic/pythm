@@ -41,6 +41,7 @@
 	gtkgui:
 	* resized gtk.notebook header (was little for my thumbs)
 	* removed computer activity icon (bottom left one)
+	* on opening, defaults to pagebrowse
 
 	gtkgui pageplay:
 	* added artist, album, tot.length tags
