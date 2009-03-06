@@ -9,6 +9,9 @@
 """ TODO: Module description """
 
 import gettext
+import logging
+
+logger = logging.getLogger("pythm")
 
 def dummy(str):
     return str
@@ -21,7 +24,7 @@ if not once:
         _ = t.lgettext
         once = True
     except Exception,e:
-        print "No Locale found, falling back! Error was:" + str(e)
+        logger.warning("No Locale found, falling back! Error was: %s" % e)
         _ = dummy
         once = True
 
