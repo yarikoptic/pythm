@@ -15,6 +15,7 @@ from page import Page
 from pythm.lang import _
 from pythm.backend import Signals
 from gtkhelper import ImageButton,get_scrolled_widget
+from pythm.constants import *
 
 class PageBrowse(Page):
     def __init__(self):
@@ -72,7 +73,7 @@ class PageBrowse(Page):
             if self.cfg.get("pythm","showpath",False) == 'False':
                 self.tv.get_column(0).set_title(os.path.basename(path).replace("_","__"))
             else:
-                self.tv.get_column(0).set_title(path.replace(self.cfg.get("mplayer","musicdir",""),"<MusicDir>").replace("_","__"))
+                self.tv.get_column(0).set_title(path.replace(self.cfg.get(CFG_SECTION_BROWSER, CFG_SETTING_MUSICDIR,""),"<MusicDir>").replace("_","__"))
 
     def row_activated(self, tv, path, view_column):
         self.add_selected_entry()
@@ -100,7 +101,7 @@ class PageBrowse(Page):
         browsefont = self.cfg.get("pythm","browsefont",None)
         col_rendr = gtk.CellRendererText()
         if browsefont is not None:
-	    col_rendr.set_property("font-desc", pango.FontDescription(browsefont))
+            col_rendr.set_property("font-desc", pango.FontDescription(browsefont))
         col_file = gtk.TreeViewColumn("<MusicDir>",col_rendr,text=1)
         self.tv.append_column(col_file)
         sc = get_scrolled_widget()

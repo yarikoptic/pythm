@@ -31,7 +31,8 @@ setup(name='Pythm',
                   'pythm.mplayer', 'pythm.mpd', 'pythm.gstreamer'],
         data_files=[('share/applications', ['data/pythm.desktop']),
                     ('/etc', ['conf/pythm.conf']),
-                    ('share/pythm/', ['doc/README'])
+                    ('share/pythm/', ['doc/README']),
+                    ('share/icons', ['data/pythm.png'])
                     ],
         scripts = ['pythm-bin', 'bin/pythm']
      )

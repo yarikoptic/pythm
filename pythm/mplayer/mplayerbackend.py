@@ -19,6 +19,10 @@ import time
 from mplayer import MPlayer
 from threading import Thread, Lock
 from pythm.functions import *
+from pythm.constants import *
+
+CFG_SECTION_MPLAYER = "mplayer" # Config file mplayer section name.
+CFG_SETTING_NICELEVEL = "renice" # Config file setting name for nice level.
 
 # Initial volume.
 DEFAULT_VOLUME = 75
@@ -77,12 +81,11 @@ class MplayerBackend(PythmBackend):
             self.repeat = False
 
             # Bind to mplayer.
-            renice = self.cfg.get("mplayer","renice",None)
+            renice = self.cfg.get(CFG_SECTION_MPLAYER, CFG_SETTING_NICELEVEL, None)
             self.mplayer = MPlayer(renice)
-            endings = self.cfg.get("mplayer","endings","ogg,mp3")
+            endings = self.cfg.get(CFG_SECTION_BROWSER, CFG_SETTING_FILEENDINGS, "ogg,mp3")
             self.endings = endings.lower().split(",")
-
-            self.filters  = self.cfg.get_array("mplayer","filters")
+            self.filters = self.cfg.get_array(CFG_SECTION_BROWSER, CFG_SETTING_FILEFILTERS)
 
             # Init the connection to dbus for suspend time read/write.
 
@@ -301,7 +304,7 @@ class MplayerBackend(PythmBackend):
     """
     def browse(self,parentDir=None):
         if parentDir is None:
-            szPath = self.cfg.get("gstreamer","musicdir","~")                        
+            szPath = self.cfg.get(CFG_SECTION_BROWSER, CFG_SETTING_MUSICDIR, "~")                        
             if (not os.path.exists(szPath)):                                         
                 szPath = "~"                                                         
             parentDir = os.path.expanduser(szPath)

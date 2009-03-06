@@ -1,3 +1,5 @@
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 #
 #   See COPYING file distributed along with the pythm for the
@@ -17,8 +19,10 @@ import gst
 from gplayer import GPlayer, MediaTypes
 from pythm.functions import *
 from threading import Thread, Lock
+from pythm.constants import *
 
-
+CFG_SECTION_GSTREAMER = "gstreamer" # Config file gstreamer section name.
+    
 # Default volume level.
 # TODO DMR save this somewhere.
 DEFAULT_VOLUME = 75
@@ -32,13 +36,15 @@ ASYNC_LOAD_WAIT_TIME = 3.5
 # Time to add to elapsed time when determining if song is over.
 # This is to get a smooth transition.
 NEXT_SONG_FUDGE_TIME = 0.45
+# Time into song at after which previous will go to start of song.
+SONG_COMMIT_TIME = 4
 
-"""
-" A thread for loading the next track in the background.
-" All it does is call async_load_thread in the main backend
-" class every so often.
-"""
 class AsyncLoader(Thread):    
+    """
+    A thread for loading the next track in the background.
+    All it does is call async_load_thread in the main backend
+    class every so often.
+    """
     def __init__(self, backend):
         Thread.__init__(self)
         self.backend = backend
@@ -49,16 +55,16 @@ class AsyncLoader(Thread):
             self.backend.async_load_thread(ASYNC_POLL_TIME)
             time.sleep(ASYNC_POLL_TIME)
 
-"""
-" Backend for gstreamer control
-" Provides basic Player usage and file browsing.
-"""
 class GStreamerBackend(PythmBackend):
+    """
+    Backend for gstreamer control
+    Provides basic Player usage and file browsing.
+    """
 
-    """
-    " Constructor.
-    """
     def __init__(self):
+        """
+        Constructor.
+        """
         self.mixer	   	 	= None
         self.lastVolume     = 0
         self.songTimer	    = 0
@@ -70,6 +76,9 @@ class GStreamerBackend(PythmBackend):
         self.curPlayer	    = 0		# Current player being played.
         self.threadLoad     = None	# Thread for background loading of next song.
         self.asyncLoadTime  = -1	# Time before async load of next song starts.
+        self.randSongs      = []    # List of random songs.
+        self.randSongIdx    = -1    # Currently playing random song.
+        self.bSongsDirty    = False # Flag for song list is dirty.
 
         PythmBackend.__init__(self,"gstreamer")
 
@@ -89,9 +98,9 @@ class GStreamerBackend(PythmBackend):
             self.my_init_dbus()
 
             # Load file browser preferences.
-            endings 		= self.cfg.get("gstreamer","endings","ogg,mp3")
-            self.endings 	= endings.lower().split(",")
-            self.filters  	= self.cfg.get_array("gstreamer","filters")
+            endings = self.cfg.get(CFG_SECTION_BROWSER, CFG_SETTING_FILEENDINGS, "ogg,mp3")
+            self.endings = endings.lower().split(",")
+            self.filters = self.cfg.get_array(CFG_SECTION_BROWSER, CFG_SETTING_FILEFILTERS)
 
             # Init gstreamer.
             self.gstreamer_init()
@@ -133,10 +142,10 @@ class GStreamerBackend(PythmBackend):
            self.players[i].set_volume(newVol)
         self.emit(Signals.VOLUME_CHANGED, newVol)
 
-    """
-    " Bind top dbus to do certain things.
-    """
     def my_init_dbus(self):
+        """
+        Bind top dbus to do certain things.
+        """
         if (self.sysbus == None or self.sesbus == None): return
 
         # Add a listener for changes to the GSM interface.
@@ -147,10 +156,10 @@ class GStreamerBackend(PythmBackend):
         except Exception, e:
             logger.error("Failed to add listener for GSM events: %s" % e)
 
-    """
-    " Callback for handling dbus on status changed events.
-    """
     def cb_idle(self, state):
+        """
+        Callback for handling dbus on status changed events.
+        """
         #logger.error( "IDLE EVENT = %s" % state)
         if (state == "suspend"):
             #logger.info("Got suspend state.")
@@ -161,14 +170,12 @@ class GStreamerBackend(PythmBackend):
             #self.gstreamer_init()
             pass
 
-    """
-    " Listen for messages from gstreamer.
-    """
     def on_player_message(self, bus, msg, playerId):
+        """
+        Listen for messages from gstreamer.
+        """
         t 	= msg.type
         player 	= self.players[playerId]
-
-        #print "*** Message for " + str(playerId) + ": " + str(msg)
 
         if (t == gst.MESSAGE_STATE_CHANGED):
             #newState = msg.parse_state_changed()[1]
@@ -190,11 +197,11 @@ class GStreamerBackend(PythmBackend):
             err, debug = msg.parse_error()
             logger.error("Gstreamer error %s" % err, debug)
 
-    """
-    " Check for a the need to load a new song and then load it into
-    " the current inactive player.
-    """
     def async_load_thread(self, elapsedTime):
+        """
+        Check for a the need to load a new song and then load it into
+        the current inactive player.
+        """
         if (self.asyncLoadTime > 0):
             self.asyncLoadTime -= elapsedTime
             if (self.asyncLoadTime < 0): self.asyncLoadTime = 0
@@ -218,37 +225,45 @@ class GStreamerBackend(PythmBackend):
             except Exception,e:
                 logger.error("Failed to async load song: %s" % str(e))
 
-    """
-    " Returns the next gstreamer player id.
-    " We have two players so the next song can be asynchronously
-    " loaded into memory.
-    """
     def get_next_player_id(self):
+        """
+        Returns the next gstreamer player id.
+        We have two players so the next song can be asynchronously
+        loaded into memory.
+        """
         return (self.curPlayer + 1) % 2
 
-    """
-    " Set to play songs in a random order.
-    " Fires the random state changed signal.
-    """
     def set_random(self,rand):
+        """
+        Set to play songs in a random order.
+        Fires the random state changed signal.
+        """
         self.random = rand
+        
+        # If engaging random mode, build list of random songs.
+        if (rand):
+            self.randSongs = randomize_entrydict(self.entrydict)
+            self.randSongIdx = -1   # Start at -1 so we can add 1 and be at 0.
+        else:
+            self.randSongs = []
+            
         self.emit(Signals.RANDOM_CHANGED,rand)
 
-    """
-    " Set to repeat the current song.
-    " Fires the repeat state change signal.
-    """
     def set_repeat(self,rept):
+        """
+        Set to repeat the current song.
+        Fires the repeat state change signal.
+        """
         self.repeat = rept
         self.emit(Signals.REPEAT_CHANGED,rept)
 
-    """
-    " Load song with the given id into the given gstreamer
-    " player. If song is loaded successfully, sets player
-    " ready state.
-    " Returns true if load successful.
-    """
     def load_song(self, playerId, songEntry):
+        """
+        Load song with the given id into the given gstreamer
+        player. If song is loaded successfully, sets player
+        ready state.
+        Returns true if load successful.
+        """
         # Sent the song id of the song to load as empty until
         # it has been successfully loaded.
         self.songIds[playerId] = None
@@ -289,10 +304,12 @@ class GStreamerBackend(PythmBackend):
                 (songEntry, playerId, e))
             return False
 
-    """
-    " Plays a song from the playlist.
-    """
     def play(self, plid=None, stopCurrent = True):
+        """
+        Plays a song from the playlist.
+        \param plId Id of song in playlist to play.
+        \param stopCurrent Stop the song in the current player. Otherwise, 
+        """
         entryState = self.state
 
         # Default state to stopped so main update loop will
@@ -411,6 +428,21 @@ class GStreamerBackend(PythmBackend):
         Determines what the next song should be and returns
         that song entry.
         """
+        nextSong = None
+
+        #print "*** choose: " + str(dir)
+        
+        # Random handling.
+        if (self.random):
+            # If the current song is some number of seconds in,
+            # back should restart the song.
+            if (dir == PlayDirection.BACKWARD and self.songTimer > SONG_COMMIT_TIME):
+                nextSong = self.current
+            else:
+                nextSong = self.get_random(dir)
+            return nextSong
+            
+        # Normal playback handling.
         if (self.current is None):
             nextSong = self.first
 
@@ -425,13 +457,44 @@ class GStreamerBackend(PythmBackend):
         elif (dir == PlayDirection.BACKWARD):
             # If the current song is some number of seconds in,
             # back should restart the song.
-            if (self.songTimer > 2):
+            if (self.songTimer > SONG_COMMIT_TIME):
                 nextSong = self.current
             else:
                 nextSong = self.current[0]
             if (nextSong == None): nextSong = self.last
 
         return nextSong
+        
+    def get_random(self, dir = PlayDirection.FORWARD):
+        """
+        Gets a new random song from the list of random songs.
+        This also handles rebuilding the random list if it is
+        empty or dirty.
+        \param dir Play direction.
+        """
+        iNumSongs = len(self.randSongs)
+        # Need to re-build the random song list if it is empty or dirty.
+        if (iNumSongs < 1 or self.bSongsDirty):
+            self.randSongs = randomize_entrydict(self.entrydict)
+            self.bSongsDirty = False    
+        
+        # Recalculate # of songs.
+        iNumSongs = len(self.randSongs)
+        # And do a final sanity check.
+        if (iNumSongs < 1): return self.current
+
+        #print "*** rand before: " + str(self.randSongIdx)
+        
+        # Choose the list increment appropriately (default is same song).
+        iIncr = 0
+        if (dir == PlayDirection.FORWARD): iIncr = 1
+        elif (dir == PlayDirection.BACKWARD): iIncr = -1
+            
+        self.randSongIdx = (self.randSongIdx + iIncr) % iNumSongs
+
+        #print "*** rand after: " + str(self.randSongIdx)
+
+        return self.randSongs[self.randSongIdx]
 
     def next(self, stopCurrent = True):
         """
@@ -490,10 +553,10 @@ class GStreamerBackend(PythmBackend):
         except:
             pass
 
-    """
-    " Called to pause playback when the phone is activated.
-    """
     def pause_for_phone(self):
+        """
+        Called to pause playback when the phone is activated.
+        """
         if (self.state != State.PLAYING): return
 
         logger.debug("Pausing playback at time %i due to phone call."
@@ -505,10 +568,10 @@ class GStreamerBackend(PythmBackend):
         except:
             logger.error("Failed to pause playback for phone call.")
 
-    """
-    " Called to resume playing when a phone call ends.
-    """
     def resume_from_phone(self):
+        """
+        Called to resume playing when a phone call ends.
+        """
         if (self.state != State.PAUSED_PHONE): return
 
         logger.debug("Resuming playback at time %i." % self.songTimer)
@@ -519,10 +582,10 @@ class GStreamerBackend(PythmBackend):
         except:
             logger.error("Error resuming playback after phone call.")
 
-    """
-    " fills entry with track data
-    """
     def fill_entry(self,array,entry):
+        """
+        Fills entry with track data
+        """
         for val in array:
             m = re.match(" Artist\: (?P<value>.*)",val)
             if(m):
@@ -531,12 +594,14 @@ class GStreamerBackend(PythmBackend):
             if(m):
                 entry.title = m.group("value").strip()
 
-    """
-    " browses trough the filesystem
-    """
     def browse(self,parentDir=None):
+        """
+        Browses trough the filesystem for files that can be added.
+        """
         if parentDir is None:
-            szPath = self.cfg.get("gstreamer","musicdir","~")
+            szPath = self.cfg.get(CFG_SECTION_BROWSER, CFG_SETTING_MUSICDIR, "~")
+            # Expand the path since it might contain ~
+            szPath = os.path.expanduser(szPath)
             if (not os.path.exists(szPath)):
                 szPath = "~"
             parentDir = os.path.expanduser(szPath)
@@ -558,10 +623,10 @@ class GStreamerBackend(PythmBackend):
         ret.sort(cmp=browserEntryCompare)
         self.emit(Signals.BROWSER_CHANGED,parentDir,ret)
 
-    """
-    
-    """
     def filter(self,file,dir):
+        """
+        Filter out of the file list any files not matching the searches in the config file.
+        """
         for filter in self.filters:
             try:
                 if re.match(filter,file): return False
@@ -575,10 +640,10 @@ class GStreamerBackend(PythmBackend):
                 return True;
         return False
 
-    """
-    " adds a browseEntry to the pl
-    """
     def add(self,beId):
+        """
+        Adds a browseEntry to the play list.
+        """
         fn    = os.path.basename(beId)
         tpl   = get_tags_from_file(fn)
         entry = PlaylistEntry(beId,tpl[0],tpl[1],-1,None,None)
@@ -603,6 +668,10 @@ class GStreamerBackend(PythmBackend):
         self.emit_pl_changed()
 
     def emit_pl_changed(self):
+        """
+        Emmit a signal that the playlist has changed.
+        Also re-randomizes the playlist if in random mode.
+        """
         pl = []
         elem = self.first
         while elem is not None:
@@ -610,11 +679,14 @@ class GStreamerBackend(PythmBackend):
             elem = elem[2]
 
         self.emit(Signals.PL_CHANGED,pl)
+        
+        # When the playlist changes flag the song list as dirty.
+        self.bSongsDirty = True
 
-    """
-    " removes entry from pl
-    """
     def remove(self,plid):
+        """
+        Removes an entry from playlist.
+        """
         tpl = self.entrydict[plid]
 
         if tpl == self.first:
@@ -633,7 +705,9 @@ class GStreamerBackend(PythmBackend):
         self.emit_pl_changed()
 
     def up(self,plid):
-        """moves plentry up"""
+        """
+        Moves an entry up in the playlist.
+        """
         tpl = self.entrydict[plid]
 
         if tpl != self.first:
@@ -648,6 +722,9 @@ class GStreamerBackend(PythmBackend):
                 self.current = tpl[0]
 
     def down(self,plid):
+        """
+        Moves an entry down in the playlist.
+        """
         tpl = self.entrydict[plid]
 
         if tpl != self.last:
@@ -661,10 +738,11 @@ class GStreamerBackend(PythmBackend):
             if tpl == self.current:
                 self.current = tpl[2]
 
-    """
-    " seeks to pos in seconds
-    """
     def seek(self, pos):
+        """
+        Seeks to given position.
+        \param pos New position in seconds.
+        """
         if (self.state != State.PLAYING and self.state != State.PAUSED): return
         if (pos > self.current[1].length): return
 
@@ -677,10 +755,10 @@ class GStreamerBackend(PythmBackend):
         except Exception,e:
             logger.error("Failed to seek to %s: %s" % (format_time(pos), e))
 
-    """
-    " shuts down backend
-    """
     def shutdown(self):
+        """
+        Shuts down the backend.
+        """
         try:
             PythmBackend.shutdown(self)
             self.threadLoad.running = False
@@ -689,27 +767,29 @@ class GStreamerBackend(PythmBackend):
         except:
             pass
 
-    """
-    " browses the parent dir of current dir
-    """
     def browse_up(self,current_dir):
+        """
+        Browses the parent dir of current dir.
+        """
         if current_dir != "/" and current_dir!=None:
             self.browse(os.path.split(current_dir)[0])
 
-    """
-    " clears playlist
-    """
     def clear(self):
+        """
+        Clears the playlist.
+        """
         self.entrydict = {}
         self.first = None
         self.current = None
         self.last = None
         self.emit_pl_changed()
+        # Clear list of random songs.
+        self.randSongs = None
 
-    """
-    " add a dir to pl
-    """
     def add_dir(self,dir_to_add):
+        """
+        Adds all files in a directory to the playlist.
+        """
 
         files = []
         for file in os.listdir(dir_to_add):
@@ -731,10 +811,11 @@ class GStreamerBackend(PythmBackend):
         for file in files:
             self.add(file)
 
-    """
-    " gets called from StateChecker Thread.
-    """
     def check_state(self, elapsedTime):
+        """
+        Time based update method.
+        Update song time and send time update signal upwards.
+        """
         if (self.state != State.PLAYING): return
 
         try:
@@ -764,15 +845,15 @@ class GStreamerBackend(PythmBackend):
         except Exception,e:
             logger.error("Unexpected error in check_state: %s" % str(e))
 
-    """
-    " Populate sets default player settings at start time.
-    " Should be called only after GUI init so that the
-    " Signals emmitted by these calls have a place to go.
-    """
     def populate(self):
+        """
+        Populate sets default player settings at start time.
+        Should be called only after GUI init so that the
+        Signals emmitted by these calls have a place to go.
+        """
         self.set_repeat(False)
         self.set_random(False)
         self.set_state(State.STOPPED)
         self.emit_pl_changed()
         self.browse()
-	self.set_volume(DEFAULT_VOLUME)	
+        self.set_volume(DEFAULT_VOLUME)	

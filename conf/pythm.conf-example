@@ -7,12 +7,24 @@ backends=mpd,mplayer,gstreamer
 # the default backend to use, can be either
 # mpd or mplayer, or omitted
 backend=gstreamer
-#backend=mplayer
 
 # Disable changing the device suspend state by setting to false.
 no_suspend=true    
 # Set which interface to use for disabling suspend. "fso" for frameworkd "e" for enlightenment.
 suspend_iface=fso
+
+# File browser settings.
+[browser]
+# directory containing music (the start folder for the browser)
+musicdir=~
+# allowed file endings in browse mode, comma separated
+endings=ogg,mp3
+# filters to exclude in file browser. applied to files and directories
+# using regular expressions. use filtersN for more entries
+# default is to ignore all elements that start with a ".".
+filters0=\..*
+filters1=*.jpg
+filters2=*.png
 
 # mpd specific settings
 [mpd]
@@ -27,30 +39,7 @@ port=6600
 [mplayer]
 # renice val for mplayer process
 renice=-8
-# Disable changing the device suspend state by setting to false.
-no_suspend=true
-
-# directory containing music (the start folder for the browser)
-musicdir=/media/card/Music/Albums
-# allowed file endings in browse mode, comma separated
-endings=ogg,mp3
-# filters to exclude in file browser. applied to files and directories
-# using regular expressions. use filtersN for more entries
-# default is to ignore all elements that start with a ".".
-filters0=\..*
-filters1=*.jpg
-filters2=*.png
 
 # gstreamer settings                         
-[gstreamer]                                                                              
-# directory containing music (the start folder for the browser) 
-musicdir=/media/card/Music/Albums                               
-# allowed file endings in browse mode, comma separated          
-endings=ogg,mp3                                                 
-# filters to exclude in file browser. applied to files and directories
-# using regular expressions. use filtersN for more entries            
-# default is to ignore all elements that start with a ".".            
-filters0=\..*                                                         
-filters1=*.jpg                                                        
-filters2=*.png
+[gstreamer] 
 

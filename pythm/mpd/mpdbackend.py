@@ -15,6 +15,12 @@ import mpdlib2
 import os
 import sys
 import traceback
+from pythm.constants import *
+
+CFG_SECTION_MPD = "mpd" # Config file mpd section name.
+CFG_SETTING_HOST = "host" # Config file setting name for host.
+CFG_SETTING_PORT = "port" # Config file setting name for port.
+CFG_SETTING_PASS = "pass" # Config file setting name for password.
 
 class MpdBackend(PythmBackend):
     """Example backend"""
@@ -39,9 +45,9 @@ class MpdBackend(PythmBackend):
             self.state = None
             self.song = None
 
-            mpd_host = self.cfg.get("mpd","host","localhost")
-            mpd_port = self.cfg.get("mpd","port","6600")
-            mpd_password = self.cfg.get("mpd","pass",None)
+            mpd_host = self.cfg.get(CFG_SECTION_MPD, CFG_SETTING_HOST, "localhost")
+            mpd_port = self.cfg.get(CFG_SECTION_MPD, CFG_SETTING_PORT, "6600")
+            mpd_password = self.cfg.get(CFG_SECTION_MPD, CFG_SETTING_PASS, None)
 
             self.mpd = mpdlib2.connect(host=mpd_host, port=mpd_port, password=mpd_password)
 
