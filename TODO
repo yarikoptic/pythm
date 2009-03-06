@@ -1,0 +1,6 @@
+    * connect to dbus and pause when there's an incoming call
+    * make coverart loading less system heavy
+    * make remove playlist button to remove only selected entry, if there is one
+    * remove unneeded mutagen files
+    * make a -pttX opkg package
+    * correct error at line 273 of backend.py (sometimes it makes e17 pop up an alert on closing)

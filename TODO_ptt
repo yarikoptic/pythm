@@ -1,5 +1,0 @@
-. aggiungere cover art nella tab play
-. se pulisco playlist, resta il file in riproduzione, ma perde la label length
-  nel tab play
-. togliere da mutagen i py non usati
-. error linea 273 in backend.py
