@@ -1,6 +1,8 @@
 - pythm (0.5.1-ptt)
 	
     ptt6:
+	* capitalized name in pythm.desktop and refined package creation
+
 	mplayerbackend:
 	* hack to bypass file names with exotic encodings
 

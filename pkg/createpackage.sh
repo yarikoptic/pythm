@@ -13,7 +13,7 @@ mkdir tmp/CONTROL
 cp control tmp/CONTROL
 
 #tar contents into pkg dir
-tar -C tmp -xvzf ../dist/Pythm*i686.tar.gz
+tar -C tmp -xvzf ../dist/Pythm*`uname -m`.tar.gz
 
 chown -R root:root tmp
 
