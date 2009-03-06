@@ -195,10 +195,14 @@ class PythmBackend(object):
             # Disable suspend on play not enabled.
             if (self.suspendRef == None): return
 
+            logger.debug("Suspend disable called state: " + str(self.state))
             iface = self.cfg.get(CFG_SECTION_PYTHM, CFG_SETTING_SUSPENDIFACE, SUSPEND_IFACE_FSO)
 
             # Set to no suspend.
-            if (self.state == State.PLAYING and not self.suspendDisabled):
+            if (self.state == State.PLAYING):
+                # Suspend disable already set.
+                if (self.suspendDisabled): return
+                logger.debug("Disabling suspend")
                 if (iface == SUSPEND_IFACE_E):
                     self.suspendRef.AutosuspendTimeoutSet(0)
                 else:
@@ -207,7 +211,10 @@ class PythmBackend(object):
                 self.suspendDisabled = True
 
             # Restore old setting.
-            elif (self.state > -1 and self.suspendDisabled):
+            elif (self.state > -1):
+                # Suspend disable already disengadged.
+                if (not self.suspendDisabled): return
+                logger.debug("Enabling suspend")
                 if (iface == SUSPEND_IFACE_E):
                     self.suspendRef.AutosuspendTimeoutSet(int(self.oldLockTime))
                 else:
