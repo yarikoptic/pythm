@@ -70,20 +70,19 @@ class PagePlay(Page):
 
     def song_changed(self,newplentry):
         self.songlabel.set_label(str(newplentry.title))
+	self.songlabel.queue_draw()
         self.tpe1label.set_label(str(newplentry.artist))
         self.talblabel.set_label(str(newplentry.album))
 	if newplentry.track is not None:
             self.trcklabel.set_label("(" + str(newplentry.track).replace('/', ' of ') + ")")
 	    # TODO cut away zeros, eg: xlate 01 to 1
-            #self.trcklabel.set_label("(" + str(newplentry.track).replace('/', ' of ').replace(' 0', ' ') + ")")
+            #self.trcklabel.set_label("(" + str(newplentry.track).replace('/', ' of ').replace(' 0', ' ').strip() + ")")
         if newplentry.length > 0:
             self.pos_scale.set_range(0,newplentry.length)
 	    self.totaltime.set_label(" / " + format_time(newplentry.length))
 
 	#load cover art
-	#if len(newplentry.cover[0].data) > 0:
-	if len(newplentry.cover) > 0:
-#	    print "PTT found a cover picture "+str(newplentry.title)
+	if newplentry.cover != None and len(newplentry.cover) > 0:
 	    self.coverart.set_property("visible", True)
 	    #TODO is there a way to make it less heavy?
 	    self.coverart.set_from_pixbuf(self.get_cover_pix(newplentry.cover[0].data))
@@ -91,7 +90,6 @@ class PagePlay(Page):
 	    self.trcklabel.set_alignment(0, 0.5)
 	    self.hboxtm.set_child_packing(self.timelabel,False,True,0,gtk.PACK_START)
 	else:
-#	    print "PTT is sorry, no cover :( "+str(newplentry.title)
 	    self.coverart.set_property("visible", False)
 	    self.talblabel.set_alignment(0.5, 0.5)
 	    self.trcklabel.set_alignment(0.5, 0.5)
@@ -105,7 +103,6 @@ class PagePlay(Page):
 	fd.write(data)
 	fd.flush()
 	fd.close()
-	#example: self.coverart.set_from_pixbuf(gtk.gdk.pixbuf_new_from_file_at_size("/tmp/mantus2009_200.jpg", 120, 120))
 	pix = gtk.gdk.pixbuf_new_from_file_at_size(tmp, 130, 130)
 	os.remove(tmp)
 	return pix
@@ -171,8 +168,9 @@ class PagePlay(Page):
         hbox.pack_start(gtk.Label("Vol"),False,False,0)
         self.vol_scale = gtk.HScale();
 	#at 100 it makes a little white noise in background
+	#and below 50 is an unusable volume anyway...
         #self.vol_scale.set_range(0,100)
-        self.vol_scale.set_range(0,97)
+        self.vol_scale.set_range(50,97)
         self.vol_scale.set_property("draw-value",False)
         self.vol_scale.connect("value-changed",self.on_volume_change)
         self.vol_scale.set_increments(5,10)
