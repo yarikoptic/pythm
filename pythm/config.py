@@ -9,8 +9,12 @@
 """Configuration 'Manager' for pythm"""
 
 import os
+import logging
 from ConfigParser import *
+
 import backend
+
+logger = logging.getLogger("pythm")
 
 class PythmConfig(ConfigParser):
     """
@@ -24,7 +28,7 @@ class PythmConfig(ConfigParser):
         """
         self.__dict__ = self.__shared_state
         if not '_ready' in dir(self):
-            print "new conf"
+            logger.debug("Initializing configuration")
             self._ready = True
             ConfigParser.__init__(self)
             cfgfile =  os.path.join(os.path.expanduser("~"),
@@ -40,7 +44,7 @@ class PythmConfig(ConfigParser):
 
     def initialize_backends(self):
         defaultbackend = self.get("pythm", "backend", None)
-        print "using " + str(defaultbackend) + " backend"
+        logger.debug("Using %s backend" % defaultbackend)
         backends = self.get_commaseparated("pythm", "backends",
                                            "mpd,mplayer,gstreamer")
         for b in backends:
@@ -51,7 +55,7 @@ class PythmConfig(ConfigParser):
                 if b == defaultbackend:
                     self.backend = instance
             except Exception,e:
-                print "Could not load backend: " + b + ": %s" % str(e)
+                logger.error("Could not load backend '%s' due to '%s'" % (b, e))
 
     def my_import(self,name):
         mod = __import__(name)

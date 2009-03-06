@@ -12,13 +12,12 @@ import pygtk
 pygtk.require('2.0')
 import gtk
 
-
 from pagelist import *
 from pageplay import *
 from pagebrowse import *
 from pagebackend import *
 from pythm.lang import _
-from pythm.backend import ThreadedBackend
+from pythm.backend import ThreadedBackend, logger
 from pythm.config import PythmConfig
 
 class PythmGtk:
@@ -27,12 +26,12 @@ class PythmGtk:
         print "Hello World"
 
     def delete_event(self, widget, event, data=None):
-        print "delete event occurred"
+        logger.debug("Delete event occurred")
         # Change FALSE to TRUE and the main window will not be destroyed
         return False
 
     def destroy(self, widget, data=None):
-        print "destroy signal occurred"
+        logger.debug("destroy signal occurred")
         for backend in self.cfg.get_backends():
             backend.shutdown()
         gtk.main_quit()
