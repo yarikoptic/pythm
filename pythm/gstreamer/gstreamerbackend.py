@@ -430,8 +430,6 @@ class GStreamerBackend(PythmBackend):
         """
         nextSong = None
 
-        #print "*** choose: " + str(dir)
-        
         # Random handling.
         if (self.random):
             # If the current song is some number of seconds in,
@@ -472,10 +470,12 @@ class GStreamerBackend(PythmBackend):
         empty or dirty.
         \param dir Play direction.
         """
+
         iNumSongs = len(self.randSongs)
         # Need to re-build the random song list if it is empty or dirty.
         if (iNumSongs < 1 or self.bSongsDirty):
             self.randSongs = randomize_entrydict(self.entrydict)
+            self.randSongIdx = -1
             self.bSongsDirty = False    
         
         # Recalculate # of songs.
@@ -483,16 +483,17 @@ class GStreamerBackend(PythmBackend):
         # And do a final sanity check.
         if (iNumSongs < 1): return self.current
 
-        #print "*** rand before: " + str(self.randSongIdx)
-        
         # Choose the list increment appropriately (default is same song).
         iIncr = 0
         if (dir == PlayDirection.FORWARD): iIncr = 1
         elif (dir == PlayDirection.BACKWARD): iIncr = -1
             
-        self.randSongIdx = (self.randSongIdx + iIncr) % iNumSongs
-
-        #print "*** rand after: " + str(self.randSongIdx)
+        # Special case for new random song list. Always start with
+        # first song.
+        if (self.randSongIdx == -1):
+            self.randSongIdx = 0
+        else:
+            self.randSongIdx = (self.randSongIdx + iIncr) % iNumSongs
 
         return self.randSongs[self.randSongIdx]
 
@@ -784,7 +785,7 @@ class GStreamerBackend(PythmBackend):
         self.last = None
         self.emit_pl_changed()
         # Clear list of random songs.
-        self.randSongs = None
+        self.randSongs = []
 
     def add_dir(self,dir_to_add):
         """
