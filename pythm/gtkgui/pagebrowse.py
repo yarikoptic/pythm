@@ -101,7 +101,7 @@ class PageBrowse(Page):
         browsefont = self.cfg.get("pythm","browsefont",None)
         col_rendr = gtk.CellRendererText()
         if browsefont is not None:
-	    col_rendr.set_property("font-desc", pango.FontDescription(browsefont))
+            col_rendr.set_property("font-desc", pango.FontDescription(browsefont))
         col_file = gtk.TreeViewColumn("<MusicDir>",col_rendr,text=1)
         self.tv.append_column(col_file)
         sc = get_scrolled_widget()
