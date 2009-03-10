@@ -1,9 +1,5 @@
 - pythm (0.5.1-ptt)
 	
-    ptt8:
-	mutagen:
-	* removed unneeded (by now ;)) mutagen files
-
     ptt7:
 	backend/mplayerbackend:
 	* added dbus binding to manage e17 suspend time, partially taken from
