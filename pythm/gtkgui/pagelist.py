@@ -23,18 +23,19 @@ class PageList(Page):
         self.btnbox.add(self.btn_down)
         self.btn_play = ImageButton(gtk.STOCK_MEDIA_PLAY)
         self.btnbox.add(self.btn_play)        
-#        self.btn_del = ImageButton(gtk.STOCK_REMOVE)
-#        self.btnbox.add(self.btn_del)        
         self.btn_clear = ImageButton(gtk.STOCK_CLEAR)
         self.btnbox.add(self.btn_clear)        
         self.btn_up.connect("clicked",self.clicked_up)
         self.btn_down.connect("clicked",self.clicked_down)
         self.btn_play.connect("clicked",self.clicked_play)
-#        self.btn_del.connect("clicked",self.clicked_del)
         self.btn_clear.connect("clicked",self.clicked_clear)
 
     def clicked_clear(self,widget):
-        self.cfg.get_backend().clear()
+        plid = self.get_selected_plid()
+        if plid != None:
+            self.cfg.get_backend().remove(plid)
+	else:
+            self.cfg.get_backend().clear()
         
     def clicked_up(self,widget):
         plid = self.get_selected_plid()
@@ -50,11 +51,6 @@ class PageList(Page):
         plid = self.get_selected_plid()
         self.cfg.get_backend().play(plid)
 
-#    def clicked_del(self,widget):
-#        plid = self.get_selected_plid()
-#        if plid != None:
-#            self.cfg.get_backend().remove(plid)
-    
     def get_selected_plid(self):
         iter = self.tv.get_selection().get_selected()[1]
         if iter is not None:
@@ -75,12 +71,23 @@ class PageList(Page):
         for p in pl:
             self.model.append([p.id,p.artist,p.title,p.album,""])
         
+#    def _row_activated_handler(self, treeview, path, col):
+#	print "handler"
+#	selected = treeview.get_selection().get_selected_rows()
+#        if not selected or len(selected) > 1:
+#	    return
+#	_iter = model.get_iter(selected[0])
+#        number = model.get_value(_iter, 2)
+#	print number
+
     def content(self):
         vbox = gtk.VBox()
         self.tv = gtk.TreeView(self.model)
-	#TODO enable multi select on list
-	#selm = self.tv.get_selection()
-	#selm.set_mode(gtk.SELECTION_MULTIPLE)
+	#TODO enable multi select work on list w/out ctrl or shift
+	#self.tv.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
+        #self.tv.connect('row-activated', self._row_activated_handler)
+
+
 	listfont = self.cfg.get("pythm","listfont",None)
 	col_rendr = gtk.CellRendererText()
 	if listfont is not None:
