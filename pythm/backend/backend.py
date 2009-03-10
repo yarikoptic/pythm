@@ -1,6 +1,7 @@
 from pythm.config import PythmConfig
 from threading import Thread,Lock
 import time
+import dbus
 
 class StoppableThread(Thread):
     def __init__ (self):
@@ -45,8 +46,27 @@ class PythmBackend(object):
         self.eventhandler = None
         self.initialized = False
         self.quiet = True
+
+	self.sessbus = None
+	self.suspendref = None
+	self.origlocktime = -1
+        self.init_dbus()
         pass
     
+    def init_dbus(self):
+        try:
+            self.sessbus = dbus.SessionBus()
+            obj = self.sessbus.get_object(
+		"org.enlightenment.wm.service",
+		"/org/enlightenment/wm/RemoteObject",
+		introspect=False)
+            self.suspendref = dbus.Interface(obj, dbus_interface="org.enlightenment.wm.IllumeConfiguration")
+            self.origlocktime = self.suspendref.AutosuspendTimeoutGet()
+	    print self.origlocktime
+        except Exception, e:
+            self.suspendref = None
+	    print str(e)
+
     def startup(self,handler):
         self.statecheck = StateChecker(self)
         self.initialized = True
@@ -149,6 +169,7 @@ class PythmBackend(object):
     
     def check_state(self):
         """callback of statechecker"""
+	"""pls see mplayerbackend for an implementation --ptt"""
         pass
     
     def browse_up(self,current_dir):

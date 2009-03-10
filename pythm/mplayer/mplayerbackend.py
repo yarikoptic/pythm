@@ -240,7 +240,7 @@ class MplayerBackend(PythmBackend):
 	#XXX ptt song_changed is emitted a lot of times...
 	#but here i refresh '>' indicator, whould be corrected
 	#TODO refres only ref '>' status of song
-	if self.current is not None:
+	if self.current is not None and self.state != State.STOPPED:
 	    self.emit(Signals.SONG_CHANGED,self.current[1])
         
     def emit_pl_changed(self):
@@ -267,7 +267,7 @@ class MplayerBackend(PythmBackend):
 	    else:
 	        pic = None
         except:
-            return ("",os.path.basename(file),"")
+            return ("",os.path.basename(file),"","",None)
 	
         return (art,tit,alb,trk,pic)
     
@@ -291,6 +291,10 @@ class MplayerBackend(PythmBackend):
             tpl[2][0] = tpl[0]
             
         self.emit_pl_changed()
+
+	# to update '>' column
+	if self.current is not None:
+            self.emit(Signals.SONG_CHANGED,self.current[1])
     
     def up(self,plid):
         """moves plentry up"""
@@ -349,6 +353,8 @@ class MplayerBackend(PythmBackend):
 	# save playing media
         if self.state != State.STOPPED:
             playing_entry = self.current[1]
+	else:
+	    playing_entry = None
         self.entrydict = {}
         self.first = None
         self.current = None
@@ -382,18 +388,28 @@ class MplayerBackend(PythmBackend):
         """
         try:
             self.lock.acquire()
+	    # ptt dbus
+            if self.suspendref is not None:
+                if self.state == State.PLAYING:
+        	    self.curlocktime = self.suspendref.AutosuspendTimeoutGet()
+		    if self.curlocktime > 0: 
+		        self.origlocktime = self.curlocktime
+               	        self.suspendref.AutosuspendTimeoutSet(0)
+	        elif self.origlocktime > -1:
+        	    self.suspendref.AutosuspendTimeoutSet(self.origlocktime)
+	    # ptt dbus end
             if self.state == State.PLAYING:
                 pos = self.mplayer.cmd("get_time_pos",'ANS_TIME_POS')
-   #             pos = self.mplayer.cmd("get_percent_pos",'ANS_PERCENT_POS')
+                #pos = self.mplayer.cmd("get_percent_pos",'ANS_PERCENT_POS')
                 
                 if self.current != None:
                     length = self.current[1].length
                 if is_numeric(pos):
                     self.emit(Signals.POS_CHANGED, pos)
-		# TODO precache following media file
-		#    if length-15 > pos:
-		#	self.next(True)
                 else:
+		    # TODO precache following media file
+		    #if length-15 > pos:
+		    #  	self.next(True)
                     self.next()
         except:
             print "unexpected error in check_state", sys.exc_info()[0]
