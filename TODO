@@ -1,6 +1,7 @@
     * connect to dbus and pause when there's an incoming call
+      (how can i do that with qtopia phone?)
     * make coverart loading less system heavy
-    * make remove playlist button to remove only selected entry, if there is one
     * remove unneeded mutagen files
-    * make a -pttX opkg package
+    * enable multiple row selection in pagelist (with click only)
     * correct error at line 273 of backend.py (sometimes it makes e17 pop up an alert on closing)
+      (seems not to trigger e17 dialog anymore now :) )

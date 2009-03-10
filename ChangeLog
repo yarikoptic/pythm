@@ -1,17 +1,30 @@
 - pythm (0.5.1-ptt)
 	
+    ptt7:
+	backend/mplayerbackend:
+	* added dbus binding to manage e17 suspend time, partially taken from
+	  Dylan Maxwell Reilly implementation
+	* corrected get_meta_data error from files without them
+
+	gtkgui pagebrowse:
+	* now '+' adds only to playlist, influencing no more playing state
+	* and '>' works as expected, starting to play from the first media
+
+	gtkgui pagelist:
+	* clear button now removes only selected entry, when there is one
+
     ptt6:
 	* capitalized name in pythm.desktop and refined package creation
 
 	mplayerbackend:
-	* hack to bypass file names with exotic encodings
+	* hack to bypass file names with exotic encodings, thanx darkmagister
 
 	configuration file/gtkgui (section [pythm]):
 	* added option to show/hide '..' entry in pagebrowse
 	* added option to load/ignore coverart
 
 	gtkgui pageplay:
-	* reduced volume slider's available range to (50,97)
+	* reduced volume slider's available range to (50,97) and steps to (2,4)
 	* force a redraw of title label when changing song
 
     ptt5:
