@@ -33,6 +33,22 @@ class PageBrowse(Page):
         
         self.cfg.get_backend().connect(Signals.BROWSER_CHANGED,self.browser_changed)
     
+    """
+    def adddir(self,start):
+        entry = self.get_selected_entry()
+        if entry != None:
+	    if entry.isDir:
+                self.cfg.get_backend().add_dir(entry.id)
+	    else:
+                self.cfg.get_backend().add(entry.id)
+	# else load the current dir (entry == None)
+	else:
+	    self.cfg.get_backend().add_dir(self.path)
+
+	if start:
+	    self.cfg.get_backend().play()
+	"""
+
     def btn_adddir_clicked(self,btn):
         entry = self.get_selected_entry()
         if entry != None:
@@ -51,9 +67,9 @@ class PageBrowse(Page):
         self.add_selected_entry()
         
     def btn_play_clicked(self,btn):
-        self.btn_adddir_clicked(btn)
-	# TODO make it play from here !
+	# set backend in PLAYING state
         self.cfg.get_backend().play()
+        self.btn_adddir_clicked(btn)
 
     def browser_changed(self,path,list):
         self.path = path
