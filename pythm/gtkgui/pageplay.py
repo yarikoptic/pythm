@@ -70,6 +70,7 @@ class PagePlay(Page):
 
     def song_changed(self,newplentry):
         self.songlabel.set_label(str(newplentry.title))
+	# seems not to work right... ?
 	self.songlabel.queue_draw()
         self.tpe1label.set_label(str(newplentry.artist))
         self.talblabel.set_label(str(newplentry.album))
@@ -173,7 +174,7 @@ class PagePlay(Page):
         self.vol_scale.set_range(50,97)
         self.vol_scale.set_property("draw-value",False)
         self.vol_scale.connect("value-changed",self.on_volume_change)
-        self.vol_scale.set_increments(5,10)
+        self.vol_scale.set_increments(2,4)
         self.vol_scale.set_update_policy(gtk.UPDATE_DISCONTINUOUS)
         hbox.pack_start(self.vol_scale,True,True,15)
         vbox.add(hbox)
@@ -185,9 +186,6 @@ class PagePlay(Page):
 	# ptt:
 ###        self.pos_scale.set_range(0,100)
         self.pos_scale.set_draw_value(0)
-#        self.pos_scale.set_draw_value(1)
-#        self.pos_scale.set_digits(0)
-#        self.pos_scale.set_value_pos(gtk.POS_RIGHT)
         self.pos_scale.connect("value-changed",self.on_pos_change)
         self.pos_scale.set_increments(5,20)
         self.pos_scale.set_update_policy(gtk.UPDATE_DISCONTINUOUS)
