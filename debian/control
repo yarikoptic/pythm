@@ -1,0 +1,23 @@
+Source: pythm
+Section: python
+Priority: extra
+Maintainer: Yaroslav Halchenko <debian@onerussian.com>
+Build-Depends: cdbs, debhelper (>= 7), python, python-support (>=0.6)
+Standards-Version: 3.8.0
+XS-Python-Version: current, >= 2.5
+Homepage: http://wiki.openmoko.org/wiki/Pythm
+Vcs-Browser: http://github.com/yarikoptic/pythm/tree/master
+Vcs-Git: git://github.com/yarikoptic/pythm.git
+
+Package: pythm
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends},
+		 python-mutagen,  python-gtk2, python-alsaaudio, python-dbus,
+		 python-ecore
+Recommends: python-gst0.10
+Suggests: mpd, mplayer
+XB-Python-Version: ${python:Versions}
+Description: GUI frontend for media players (e.g. mpd, GStreamer, mplayer)
+ Pythm (Python + Rhythm) is a media player frontend, designed to
+ control GStreamer, mplayer or mpd with one GUI on mobile devices such
+ as OpenMoko's FreeRunner.

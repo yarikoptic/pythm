@@ -1,0 +1,3 @@
+?package(pythm):needs="X11" section="Applications/Sound"\
+  title="Pythm" command="/usr/bin/pythm" \
+  icon="/usr/share/pixmaps/pythm.png"

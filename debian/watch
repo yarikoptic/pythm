@@ -1,0 +1,3 @@
+version=3
+opts="uversionmangle=s/\/pythm-//" \
+http://githubredir.debian.net/github/yarikoptic/pythm (.*).tar.gz

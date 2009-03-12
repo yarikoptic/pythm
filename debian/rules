@@ -1,0 +1,8 @@
+#!/usr/bin/make -f
+
+include /usr/share/cdbs/1/rules/debhelper.mk
+DEB_PYTHON_SYSTEM = pysupport
+#DEB_PYTHON_MODULE_PACKAGE = pythm
+include /usr/share/cdbs/1/class/python-distutils.mk
+
+# Add here any variable or target overrides you need.

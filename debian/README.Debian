@@ -1,0 +1,13 @@
+pythm for Debian
+----------------
+
+Although it is not explicitly mentioned, this pythm package is based
+on a fork of pythm primarily developed by Dylan Reilly.
+
+An alternative fork was developed by Paul TT
+   http://github.com/yarikoptic/pythm/tree/paultt-novcs
+
+Some changes from it were adopted by Dylan, hence Paul is also
+mentioned in debian/copyright.
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Thu, 12 Mar 2009 00:43:58 -0400

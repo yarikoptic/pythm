@@ -1,0 +1,6 @@
+pythm (0.5.5+git20090315-1~pre1) unstable; urgency=low
+
+  * Initial release (Closes: #518494)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Thu, 12 Mar 2009 00:43:58 -0400
+
