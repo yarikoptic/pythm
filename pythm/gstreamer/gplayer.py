@@ -43,7 +43,7 @@ class GPlayer:
         self.demuxers.append(None);
 
         # OGG
-        self.decoders.append(gst.element_factory_make("ivorbisdec", "decode-ogg"))
+        self.decoders.append(gst.element_factory_make("vorbisdec", "decode-ogg"))
         self.demuxers.append(gst.element_factory_make("oggdemux", "demux-vorbis"));
         self.demuxers[MediaTypes.OGG].connect("pad-added", self.ogg_demux_cb)
 
