@@ -34,5 +34,5 @@ setup(name='Pythm',
                     ('share/pythm/', ['doc/README']),
                     ('share/icons', ['data/pythm.png'])
                     ],
-        scripts = ['pythm-bin', 'bin/pythm']
+        scripts = ['bin/pythm']
      )
