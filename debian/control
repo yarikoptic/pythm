@@ -14,7 +14,7 @@ Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends},
 		 python-mutagen,  python-gtk2, python-alsaaudio, python-dbus,
 		 python-ecore
-Recommends: python-gst0.10
+Recommends: python-gst0.10, gstreamer0.10-plugins-good
 Suggests: mpd, mplayer
 XB-Python-Version: ${python:Versions}
 Description: GUI frontend for media players (e.g. mpd, GStreamer, mplayer)
