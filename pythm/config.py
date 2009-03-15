@@ -10,6 +10,7 @@
 
 import os
 import logging
+import warnings
 from ConfigParser import *
 
 import backend
@@ -41,6 +42,8 @@ class PythmConfig(ConfigParser):
             self.backend = backend.DummyBackend()
             self.callbacks = {}
             self.initialize_backends()
+            self._wfilter = []
+            """Already reported warnings. So we could report only once"""
 
     def initialize_backends(self):
         defaultbackend = self.get("pythm", "backend", None)
@@ -57,7 +60,7 @@ class PythmConfig(ConfigParser):
             except Exception,e:
                 logger.error("Could not load backend '%s' due to '%s'" % (b, e))
 
-    def my_import(self,name):
+    def my_import(self, name):
         mod = __import__(name)
         components = name.split('.')
         for comp in components[1:]:
@@ -65,15 +68,41 @@ class PythmConfig(ConfigParser):
         return mod
 
 
-    def get(self, section, option, default=None):
+    def _warn(self, wstr):
+        """Issue a warning to the logger, make sure that it is done only once
         """
-        returns the configuration Option or the provided Default value, if the section or option does not exist.
+        if not wstr in self._wfilter:
+            self._wfilter.append(wstr)
+            logger.warn(wstr)
+
+    def get(self, section, option, default=None, dtype=None):
+        """Returns the value for a configuration option
+
+        :Parameters:
+          section
+            Name of the section in a configuration file
+          option
+            Name of the option
+          default
+            Value to be provided if configuration file does not
+            contain a corresponding section/option
         """
         ret = default
         try:
             ret = ConfigParser.get(self, section, option)
-        except:
-            pass
+        except Exception, e:
+            self._warn("Assuming the %s.%s=%s since no option is found "
+                       "in configuration file: %s" %
+                       (section, option, default, str(e)))
+
+        if dtype is not None:
+            try:
+                ret = dtype(ret)
+            except Exception, e:                # could be ValueError, TypeError
+                self._warn("Assuming default %s.%s=%s since failed to "
+                           "convert '%s' using %s: %s" %
+                           (section, option, default, ret, dtype, str(e)))
+                ret = default
         return ret
 
     def get_commaseparated(self,section,option,default):

@@ -17,12 +17,7 @@ def startPythm():
     """Start the Pythm and renice if it was requested
     """
     config = PythmConfig()
-    try:
-        renice_level = config.getint("pythm", "renice")
-    except Exception, e:                # could be ValueError, TypeError
-        renice_level = -5
-        logger.warn("Assuming default renice=%d since failed to read "
-                    "pythm.renice configuration: %s" % (renice_level, str(e)))
+    renice_level = config.get("pythm", "renice", default=-5, dtype=int)
     if renice_level != 0:
         logger.debug("Renicing pythm to %d" % renice_level)
         try:
