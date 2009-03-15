@@ -99,17 +99,17 @@ class GPlayer:
         """
 
         # Next, build the corrert pipeline.
+        # Common arguments
+        cargs = [self.conv, self.volume, self.sink]
         if (eMedia == MediaTypes.MP3):
-            self.player.add(self.source, self.decoders[MediaTypes.MP3], self.conv,
-                self.volume, self.sink)
+            self.player.add(self.source, self.decoders[MediaTypes.MP3], *cargs)
             gst.element_link_many(self.source, self.decoders[MediaTypes.MP3],
-                self.conv,self.volume, self.sink)
+                                  *cargs)
         elif (eMedia == MediaTypes.OGG):
             self.player.add(self.source, self.demuxers[MediaTypes.OGG],
-                self.decoders[MediaTypes.OGG], self.conv, self.volume, self.sink)
+                            self.decoders[MediaTypes.OGG], *cargs)
             gst.element_link_many(self.source, self.demuxers[MediaTypes.OGG])
-            gst.element_link_many(self.decoders[MediaTypes.OGG], self.conv,
-                self.volume, self.sink)
+            gst.element_link_many(self.decoders[MediaTypes.OGG], *cargs)
         """
         elif (eMedia == MediaTypes.FLAC):
             #DMR TODO Add flac support.
@@ -134,14 +134,14 @@ class GPlayer:
         Returns the length (float, seconds) of the current track.
         Only works if the player state has been set to Playing.
         """
-        return float(self.player.query_duration(self.timeFmt, None)[0] / 1000000000)
+        return float(self.player.query_duration(self.timeFmt, None)[0] / 1e9)
 
     def get_position(self):
         """
         Returns the current position (float, seconds) of the current track.
         Only works if the player state has been set to Playing.
         """
-        return float(self.player.query_position(self.timeFmt, None)[0] / 1000000000)
+        return float(self.player.query_position(self.timeFmt, None)[0] / 1e9)
 
     def set_file(self, fn):
         """
@@ -168,7 +168,8 @@ class GPlayer:
         """
         Seeks the player to the given time in seconds.
         """
-        self.player.seek_simple(self.timeFmt, gst.SEEK_FLAG_FLUSH, iSeconds * 1000000000)
+        self.player.seek_simple(self.timeFmt, gst.SEEK_FLAG_FLUSH,
+                                iSeconds * int(1e9))
 
 class MediaTypes:
     """
