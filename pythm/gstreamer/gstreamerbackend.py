@@ -198,7 +198,7 @@ class GStreamerBackend(PythmBackend):
         # Error message.
         elif (t == gst.MESSAGE_ERROR):
             err, debug = msg.parse_error()
-            logger.error("Gstreamer error %s" % err, debug)
+            logger.error("Gstreamer error %s: %%s" % err, debug)
 
     def async_load_thread(self, elapsedTime):
         """

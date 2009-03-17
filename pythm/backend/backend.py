@@ -128,12 +128,13 @@ class PythmBackend(object):
         self.statecheck.start()
         return True
 
-    """
-    " Initialze hooks into dbus.
-    " Gets the session and system bus references and adds
-    " a callback to watch for incoming calls.
-    """
     def init_dbus(self):
+        """Initialze hooks into dbus.
+
+        Gets the session and system bus references and adds
+        a callback to watch for incoming calls.
+        """
+
         try:
             self.mainLoop   = e_dbus.DBusEcoreMainLoop()
             self.sysbus     = dbus.SystemBus(mainloop=self.mainLoop)
@@ -151,7 +152,7 @@ class PythmBackend(object):
             self.init_suspend_disable()
 
         except dbus.DBusException, e:
-            logger.warn("Could not connect to dbus.")
+            logger.warn("Could not connect to dbus due to '%s'." % e)
 
     """
     " Initialize the dbus reference for disabling suspend when playing.
@@ -233,15 +234,17 @@ class PythmBackend(object):
     def cb_call_status(self, id, status, props):
         logger.debug("Phone call status changed to: %s." % status)
 
-        if status == "outgoing" or status == "active" or status == "incoming":
-            logger.debug("Initiating playback pause for phone call state.")
-
-        if (self.state == State.PLAYING):
-            self.pause_for_phone()
-
-        else:
+        if status in ["outgoing", "active", "incoming"]:
+            if (self.state == State.PLAYING):
+                logger.debug("Initiating playback pause for phone call state.")
+                self.pause_for_phone()
+        elif status in ["release"]:
+            logger.debug("Resuming playback due to release of phone.")
             if (self.state == State.PAUSED_PHONE):
                 self._resume_from_phone()
+        else:
+            logger.warn("Uknown phone state %s" % status)
+
 
     """
     " Sets our state and emits a state changed signal.
