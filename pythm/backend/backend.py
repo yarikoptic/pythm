@@ -515,7 +515,7 @@ class HelperThread(Thread):
                     getattr(self.backend,cmd[0])(*args)
                     #print "executed "+cmd[0]
                 except Exception, e:
-                    print "error executing:" + str(e)
+                    logger.error("Executing cmd:%s :%s" % (cmd, e))
                 finally:
                     if len(self.cmds) == 0:
                         self.backend.emit(Signals.COMMAND_STATE,True);
