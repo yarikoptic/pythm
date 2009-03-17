@@ -1,3 +1,5 @@
+# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
+# vi: set ft=python sts=4 ts=4 sw=4 et:
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 #
 #   See COPYING file distributed along with the pythm for the
@@ -20,7 +22,7 @@ from threading import Thread, Lock
 from pythm.constants import *
 
 CFG_SECTION_GSTREAMER = "gstreamer" # Config file gstreamer section name.
-    
+
 # Default volume level.
 # TODO DMR save this somewhere.
 DEFAULT_VOLUME = 75
@@ -37,7 +39,7 @@ NEXT_SONG_FUDGE_TIME = 0.25
 # Time into song at after which previous will go to start of song.
 SONG_COMMIT_TIME = 4
 
-class AsyncLoader(Thread):    
+class AsyncLoader(Thread):
     """
     A thread for loading the next track in the background.
     All it does is call async_load_thread in the main backend
@@ -96,9 +98,11 @@ class GStreamerBackend(PythmBackend):
             self.my_init_dbus()
 
             # Load file browser preferences.
-            endings = self.cfg.get(CFG_SECTION_BROWSER, CFG_SETTING_FILEENDINGS, "ogg,mp3")
+            endings = self.cfg.get(CFG_SECTION_BROWSER,
+                                   CFG_SETTING_FILEENDINGS, "ogg,mp3")
             self.endings = endings.lower().split(",")
-            self.filters = self.cfg.get_array(CFG_SECTION_BROWSER, CFG_SETTING_FILEFILTERS)
+            self.filters = self.cfg.get_array(CFG_SECTION_BROWSER,
+                                              CFG_SETTING_FILEFILTERS)
 
             # Init gstreamer.
             self.gstreamer_init()
@@ -237,15 +241,15 @@ class GStreamerBackend(PythmBackend):
         Set to play songs in a random order.
         Fires the random state changed signal.
         """
-        self.bRandom = rand
-        
+        self.random = rand
+
         # If engaging random mode, build list of random songs.
         if (rand):
             self.randSongs = randomize_entrydict(self.entrydict)
             self.randSongIdx = -1   # Start at -1 so we can add 1 and be at 0.
         else:
             self.randSongs = []
-            
+
         self.emit(Signals.RANDOM_CHANGED,rand)
 
     def set_repeat(self,rept):
@@ -289,7 +293,7 @@ class GStreamerBackend(PythmBackend):
             if (songEntry.length <= 0):
                 songEntry.length = self.get_length_retry(self.players[playerId])
 
-            # Seek the player a little to help it load. 
+            # Seek the player a little to help it load.
             # DMR Maybe this works...
             player.seek(0.1);
 
@@ -308,7 +312,7 @@ class GStreamerBackend(PythmBackend):
         """
         Plays a song from the playlist.
         \param plId Id of song in playlist to play.
-        \param stopCurrent Stop the song in the current player. Otherwise, 
+        \param stopCurrent Stop the song in the current player. Otherwise,
         """
         entryState = self.state
 
@@ -336,7 +340,8 @@ class GStreamerBackend(PythmBackend):
 
             try:
 
-                if (stopCurrent): self.players[self.curPlayer].set_state(gst.STATE_NULL)
+                if (stopCurrent):
+                    self.players[self.curPlayer].set_state(gst.STATE_NULL)
 
                 # New song to play is same a current song (e.g., repeat)
                 # so restart current song without loading.
@@ -439,13 +444,14 @@ class GStreamerBackend(PythmBackend):
                 return self.current
             # If the current song is some number of seconds in,                    
             # back should restart the song.                                        
-            if (dir == PlayDirection.BACKWARD and self.songTimer > SONG_COMMIT_TIME):
+            if (dir == PlayDirection.BACKWARD 
+                and self.songTimer > SONG_COMMIT_TIME):
                 return self.current
 
         # Random handling.
-        if (self.bRandom):
+        if (self.random):
             return self.get_random(dir)
-            
+
         # Normal playback handling.
         if (self.current is None):
             nextSong = self.first
@@ -459,7 +465,7 @@ class GStreamerBackend(PythmBackend):
             if (nextSong == None): nextSong = self.last
 
         return nextSong
-        
+
     def get_random(self, dir = PlayDirection.FORWARD):
         """
         Gets a new random song from the list of random songs.
@@ -473,8 +479,8 @@ class GStreamerBackend(PythmBackend):
         if (iNumSongs < 1 or self.bSongsDirty):
             self.randSongs = randomize_entrydict(self.entrydict)
             self.randSongIdx = -1
-            self.bSongsDirty = False    
-        
+            self.bSongsDirty = False
+
         # Recalculate # of songs.
         iNumSongs = len(self.randSongs)
         # And do a final sanity check.
@@ -484,7 +490,7 @@ class GStreamerBackend(PythmBackend):
         iIncr = 0
         if (dir == PlayDirection.FORWARD): iIncr = 1
         elif (dir == PlayDirection.BACKWARD): iIncr = -1
-            
+
         # Special case for new random song list. Always start with
         # first song.
         if (self.randSongIdx == -1):
@@ -604,21 +610,25 @@ class GStreamerBackend(PythmBackend):
         Browses trough the filesystem for files that can be added.
         """
         if parentDir is None:
-            szPath = self.cfg.get(CFG_SECTION_BROWSER, CFG_SETTING_MUSICDIR, "~")
+            szPath = self.cfg.get(CFG_SECTION_BROWSER,
+                                  CFG_SETTING_MUSICDIR, "~")
+            # Expand the path since it might contain ~
+            szPath = os.path.expanduser(szPath)
             if (not os.path.exists(szPath)):
                 szPath = "~"
             parentDir = os.path.expanduser(szPath)
         ret = []
 
         if parentDir != "/":
-            ret.append(BrowserEntry(os.path.split(parentDir)[0],"..",True))
+            ret.append(BrowserEntry(os.path.split(parentDir)[0], "..", True))
 
         for file in os.listdir(parentDir):
             dir = False
             fullpath = os.path.join(parentDir,file)
             if os.path.isdir(fullpath):
                 dir = True
-            fullpath = unicode(fullpath,sys.getfilesystemencoding()).encode("utf-8")
+            fullpath = unicode(fullpath,
+                               sys.getfilesystemencoding()).encode("utf-8")
 
             if self.filter(file,dir):
                 ret.append(BrowserEntry(fullpath,file,dir))
@@ -628,7 +638,8 @@ class GStreamerBackend(PythmBackend):
 
     def filter(self,file,dir):
         """
-        Filter out of the file list any files not matching the searches in the config file.
+        Filter out of the file list any files
+        not matching the searches in the config file.
         """
         for filter in self.filters:
             try:
@@ -682,7 +693,7 @@ class GStreamerBackend(PythmBackend):
             elem = elem[2]
 
         self.emit(Signals.PL_CHANGED,pl)
-        
+
         # When the playlist changes flag the song list as dirty.
         self.bSongsDirty = True
 
@@ -842,7 +853,8 @@ class GStreamerBackend(PythmBackend):
             # Use the timer to determine if a song has ended
             # and advance to the next. Do not stop the current song
             # just yet for a smooth cross fade.
-            if (self.songTimer + elapsedTime + NEXT_SONG_FUDGE_TIME >= self.songLength):
+            if (self.songTimer + elapsedTime + NEXT_SONG_FUDGE_TIME 
+                >= self.songLength):
                   # Handle playing of same song if repeat set.
                   if (self.bRepeat): self.repeat()
                   else: self.next(False)
@@ -861,4 +873,4 @@ class GStreamerBackend(PythmBackend):
         self.set_state(State.STOPPED)
         self.emit_pl_changed()
         self.browse()
-        self.set_volume(DEFAULT_VOLUME)	
+        self.set_volume(DEFAULT_VOLUME)

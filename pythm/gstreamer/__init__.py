@@ -6,7 +6,7 @@
 #   copyright and license terms.
 #
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-""" TODO: Module description """
+""" GStreamer backend for Pythm """
 
 from gstreamerbackend import *
 

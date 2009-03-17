@@ -9,9 +9,14 @@ backends=mpd,mplayer,gstreamer
 backend=gstreamer
 
 # Disable changing the device suspend state by setting to false.
-no_suspend=true    
+no_suspend=true
 # Set which interface to use for disabling suspend. "fso" for frameworkd "e" for enlightenment.
 suspend_iface=fso
+
+# nice level for the process
+# 0-value triggers no action,
+# negative values provide pythm process more priority
+renice=-5
 
 # File browser settings.
 [browser]
@@ -40,6 +45,6 @@ port=6600
 # renice val for mplayer process
 renice=-8
 
-# gstreamer settings                         
-[gstreamer] 
+# gstreamer settings
+[gstreamer]
 

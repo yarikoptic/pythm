@@ -6,13 +6,24 @@
 #   copyright and license terms.
 #
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-""" TODO: Module description """
+""" Starts Pythm's GUI """
 
+import os
 import gtkgui
 import backend
-from config import PythmConfig
+from config import PythmConfig, logger
 
 def startPythm():
+    """Start the Pythm and renice if it was requested
+    """
+    config = PythmConfig()
+    renice_level = config.get("pythm", "renice", default=-5, dtype=int)
+    if renice_level != 0:
+        logger.debug("Renicing pythm to %d" % renice_level)
+        try:
+            os.nice(renice_level)
+        except OSError, e:
+            logger.error("Failed to renice: %s" % e)
     gtkgui.PythmGtk()
 
 if __name__ == "__main__":
