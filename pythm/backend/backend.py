@@ -128,12 +128,13 @@ class PythmBackend(object):
         self.statecheck.start()
         return True
 
-    """
-    " Initialze hooks into dbus.
-    " Gets the session and system bus references and adds
-    " a callback to watch for incoming calls.
-    """
     def init_dbus(self):
+        """Initialze hooks into dbus.
+
+        Gets the session and system bus references and adds
+        a callback to watch for incoming calls.
+        """
+
         try:
             self.mainLoop   = e_dbus.DBusEcoreMainLoop()
             self.sysbus     = dbus.SystemBus(mainloop=self.mainLoop)
@@ -151,7 +152,7 @@ class PythmBackend(object):
             self.init_suspend_disable()
 
         except dbus.DBusException, e:
-            logger.warn("Could not connect to dbus.")
+            logger.warn("Could not connect to dbus due to '%s'." % e)
 
     """
     " Initialize the dbus reference for disabling suspend when playing.
