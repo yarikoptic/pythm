@@ -233,15 +233,17 @@ class PythmBackend(object):
     def cb_call_status(self, id, status, props):
         logger.debug("Phone call status changed to: %s." % status)
 
-        if status == "outgoing" or status == "active" or status == "incoming":
-            logger.debug("Initiating playback pause for phone call state.")
-
-        if (self.state == State.PLAYING):
-            self.pause_for_phone()
-
-        else:
+        if status in ["outgoing", "active", "incoming"]:
+            if (self.state == State.PLAYING):
+                logger.debug("Initiating playback pause for phone call state.")
+                self.pause_for_phone()
+        elif status in ["release"]:
+            logger.debug("Resuming playback due to release of phone.")
             if (self.state == State.PAUSED_PHONE):
                 self._resume_from_phone()
+        else:
+            logger.warn("Uknown phone state %s" % status)
+
 
     """
     " Sets our state and emits a state changed signal.
