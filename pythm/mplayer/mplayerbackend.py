@@ -26,7 +26,6 @@ class InfoRetriever(StoppableThread):
                 pass
         
 
-         
 
 class MplayerBackend(PythmBackend):
     """
@@ -66,8 +65,8 @@ class MplayerBackend(PythmBackend):
             return False
     
     def set_volume(self,newVol):
-        """sets new volume"""
-        self.mplayer.command("volume",newVol,1)
+        """sets new volume mantaining pause state"""
+        self.mplayer.command("pausing_keep volume",newVol,1)
         self.emit(Signals.VOLUME_CHANGED,newVol)
     
     def set_random(self,rand):
@@ -92,15 +91,17 @@ class MplayerBackend(PythmBackend):
                 self.current = self.entrydict[plid]
             if self.current != None:
                 entry = self.current[1]
-		#XXX ptt song_changed is emitted a lot of times...
-                ####self.emit(Signals.SONG_CHANGED,entry)
                 self.mplayer.cmd("loadfile '" + entry.id.replace('\'', '\\\'') +"'", "======")
 		self.get_meta_data(entry.id)
                 entry.length = self.mplayer.cmd("get_time_length","ANS_LENGTH")
-                self.emit(Signals.SONG_CHANGED,entry)
+		# tell everybody ASAP we're in playing state
                 self.set_state(State.PLAYING)
+                self.emit(Signals.SONG_CHANGED,entry)
+                #self.set_state(State.PLAYING)
             else:
-                self.set_state(State.STOPPED)    
+                self.set_state(State.STOPPED)
+		# XXX ptt (to signal end of list???)
+                self.emit(Signals.SONG_CHANGED,None)
         
     
     def choose_song(self,plid = None):
@@ -110,17 +111,11 @@ class MplayerBackend(PythmBackend):
         if plid != None:
             self.current = self.entrydict[plid]
             
-	#XXX ptt song_changed is emitted a lot of times...
-	#if self.current != None:
-	#    self.emit(Signals.SONG_CHANGED,self.current[1])
-        
         if self.state == State.PAUSED:
             self.stop()
-        
-        if self.state == State.PLAYING:
+        elif self.state == State.PLAYING:
             self.play()
         
-    
     def set_state(self,newState):
         self.state = newState
         self.emit(Signals.STATE_CHANGED,newState)
@@ -133,15 +128,34 @@ class MplayerBackend(PythmBackend):
             if self.current[2] != None:
                 self.choose_song(self.current[2][1].id)
             elif self.repeat:
-                self.choose_song(self.first[1].id)
+                self.choose_song(self.first[1].id)	
+	    # little hack ptt XXX
+	    # TODO implement end of songs in choose_song
+	    else:
+		self.stop()
+                #self.set_state(State.STOPPED)    
+                #self.emit(Signals.SONG_CHANGED,None)
+		
     
     def prev(self):
         """Previous song in Playlist"""
+	"""or restart current if pos > 5""" 
+        if self.state == State.PLAYING:
+            pos = self.mplayer.cmd("get_time_pos",'ANS_TIME_POS')
+	    if pos > 5:
+		self.play(self.current[1].id)
+		return
         if self.current != None:
             if self.current[0] != None:
                 self.choose_song(self.current[0][1].id)
             elif self.repeat:
                 self.choose_song(self.last[1].id)
+	    # little hack ptt XXX
+	    # TODO implement end of songs in choose_song
+	    else:
+		self.stop()
+                #self.set_state(State.STOPPED)    
+                #self.emit(Signals.SONG_CHANGED,None)
     
     def pause(self):
         """pauses playback"""
@@ -166,6 +180,8 @@ class MplayerBackend(PythmBackend):
 		#then resets to start of playlist
 	        self.current = self.first
             self.set_state(State.STOPPED)
+	    #cleans pageplay
+            self.emit(Signals.SONG_CHANGED,None)
         except:
             pass
         self.lock.release()
@@ -262,12 +278,12 @@ class MplayerBackend(PythmBackend):
 	    tit = id3.get('TIT2')
 	    alb = id3.get('TALB')
 	    trk = id3.get('TRCK')
-            if self.cfg.get("mplayer","coverart",'True') == 'True':
+            if self.cfg.get_boolean("mplayer","coverart","True"):
 	        pic = id3.getall('APIC')
 	    else:
 	        pic = None
         except:
-            return ("",os.path.basename(file),"","",None)
+            return ("",os.path.basename(file),"",None,None)
 	
         return (art,tit,alb,trk,pic)
     
@@ -391,12 +407,13 @@ class MplayerBackend(PythmBackend):
 	    # ptt dbus
             if self.suspendref is not None:
                 if self.state == State.PLAYING:
-        	    self.curlocktime = self.suspendref.AutosuspendTimeoutGet()
-		    if self.curlocktime > 0: 
-		        self.origlocktime = self.curlocktime
+        	    curlocktime = self.suspendref.AutosuspendTimeoutGet()
+		    if curlocktime > 0: 
+		        self.origlocktime = curlocktime
                	        self.suspendref.AutosuspendTimeoutSet(0)
 	        elif self.origlocktime > -1:
         	    self.suspendref.AutosuspendTimeoutSet(self.origlocktime)
+		    self.origlocktime = -1
 	    # ptt dbus end
             if self.state == State.PLAYING:
                 pos = self.mplayer.cmd("get_time_pos",'ANS_TIME_POS')

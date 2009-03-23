@@ -2,6 +2,7 @@
 import os
 from ConfigParser import *
 import backend
+import string
 
 class PythmConfig(ConfigParser):
     """
@@ -15,7 +16,7 @@ class PythmConfig(ConfigParser):
         """
         self.__dict__ = self.__shared_state
         if not '_ready' in dir(self):
-            print "new conf"
+            #print "new conf"
             self._ready = True
             ConfigParser.__init__(self)
             cfgfile =  os.path.join(os.path.expanduser("~"), ".pythm", "pythm.conf")
@@ -39,8 +40,8 @@ class PythmConfig(ConfigParser):
                 self.backends.append(instance)
                 if b == defaultbackend:
                     self.backend = instance
-            except:
-                print "could not load backend" + b
+            except Exception, e :
+                print "could not load backend " + b + ": " + str(e)
         
     def my_import(self,name):
         mod = __import__(name)
@@ -67,8 +68,17 @@ class PythmConfig(ConfigParser):
         """
         data = self.get(section,option,default)
         return data.split(",")
-        
-    
+
+    def get_boolean(self,section,option,default):
+        """
+        returns a boolean
+        """
+        data = self.get(section,option,default)
+	if string.upper(data) == "TRUE":
+	    return True
+	else:
+	    return False
+
     def get_array(self,section,option):
         """
         returns an array option starting at 0

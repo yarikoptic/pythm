@@ -57,6 +57,8 @@ class PagePlay(Page):
 
         
     def state_changed(self,newstate):
+	# reset the volume to pair vol_scale value
+        self.cfg.get_backend().set_volume(int(self.vol_scale.get_value()))
         if newstate == State.STOPPED:
             self.btn_stop.set_sensitive(False)
             self.btn_playpause.set_sensitive(True)
@@ -68,21 +70,56 @@ class PagePlay(Page):
             self.btn_stop.set_sensitive(True)
             self.btn_playpause.set_image(self.pauseimg)
 
+    def set_coverart(self,cover):
+	if cover is not None and len(cover) > 0:
+	    self.coverart.set_property("visible", True)
+	    #TODO is there a way to make it less heavy?
+	    self.coverart.set_from_pixbuf(self.get_cover_pix(cover[0].data))
+	    self.talblabel.set_alignment(0, 0.5)
+	    self.trcklabel.set_alignment(0, 0.5)
+	    self.hboxtm.set_child_packing(self.timelabel,False,True,0,gtk.PACK_START)
+	else:
+	    self.coverart.set_property("visible", False)
+	    self.talblabel.set_alignment(0.5, 0.5)
+	    self.trcklabel.set_alignment(0.5, 0.5)
+	    self.hboxtm.set_child_packing(self.timelabel,True,True,0,gtk.PACK_START)
+
     def song_changed(self,newplentry):
+	if newplentry is None:
+	    self.songlabel.set_label("")
+            self.tpe1label.set_label("")
+            self.talblabel.set_label("")
+	    self.trcklabel.set_label("")
+	    self.timelabel.set_label("")
+	    self.totaltime.set_label("")
+	    self.set_coverart(None)
+	    return
+	
         self.songlabel.set_label(str(newplentry.title))
-	# seems not to work right... ?
-	self.songlabel.queue_draw()
+	# queue_draw seems not to work right... ?
+	#self.songlabel.queue_draw()
+	self.songlabel.queue_resize()
+	#see below::XXX:
         self.tpe1label.set_label(str(newplentry.artist))
         self.talblabel.set_label(str(newplentry.album))
 	if newplentry.track is not None:
             self.trcklabel.set_label("(" + str(newplentry.track).replace('/', ' of ') + ")")
 	    # TODO cut away zeros, eg: xlate 01 to 1
             #self.trcklabel.set_label("(" + str(newplentry.track).replace('/', ' of ').replace(' 0', ' ').strip() + ")")
+	else:
+	    self.trcklabel.set_label("")
         if newplentry.length > 0:
             self.pos_scale.set_range(0,newplentry.length)
-	    self.totaltime.set_label(" / " + format_time(newplentry.length))
+	    self.totaltime.set_label(" / " + format_time(int(newplentry.length)))
+	    #print newplentry.length
+	    #print format_time(int(newplentry.length))
+	else:
+	    self.totaltime.set_label("")
 
 	#load cover art
+	self.set_coverart(newplentry.cover)
+	
+	"""
 	if newplentry.cover != None and len(newplentry.cover) > 0:
 	    self.coverart.set_property("visible", True)
 	    #TODO is there a way to make it less heavy?
@@ -95,6 +132,11 @@ class PagePlay(Page):
 	    self.talblabel.set_alignment(0.5, 0.5)
 	    self.trcklabel.set_alignment(0.5, 0.5)
 	    self.hboxtm.set_child_packing(self.timelabel,True,True,0,gtk.PACK_START)
+	"""
+
+	#:XXX::here is below:
+	# working bad the same as above, sigh
+	#self.vbox.queue_draw()
 
         self.pos_changed(0)
 
@@ -125,13 +167,13 @@ class PagePlay(Page):
 	tagfont = self.cfg.get("pythm","tagfont",None)
         #track info
 	#title and artist
-        vbox = gtk.VBox()
+        self.vbox = gtk.VBox()
 	#TIT2
         self.songlabel = gtk.Label("")
-        vbox.pack_start(self.songlabel,True,True,0)
+        self.vbox.pack_start(self.songlabel,True,True,0)
 	#TPE1-2
         self.tpe1label = gtk.Label("")
-        vbox.pack_start(self.tpe1label,True,True,0)
+        self.vbox.pack_start(self.tpe1label,True,True,0)
 
 	#box with other infos
         hbox0 = gtk.HBox()
@@ -157,7 +199,7 @@ class PagePlay(Page):
         vbox0.pack_start(self.hboxtm,True,True,0)
         hbox0.pack_start(vbox0,True,True,0)
 
-        vbox.pack_start(hbox0,True,True,0)
+        self.vbox.pack_start(hbox0,True,True,0)
 	
 	# set up fonts
 	if tagfont is not None:
@@ -177,7 +219,7 @@ class PagePlay(Page):
         self.vol_scale.set_increments(2,4)
         self.vol_scale.set_update_policy(gtk.UPDATE_DISCONTINUOUS)
         hbox.pack_start(self.vol_scale,True,True,15)
-        vbox.add(hbox)
+        self.vbox.add(hbox)
         
         #pos slider
         hbox2 = gtk.HBox()
@@ -190,9 +232,9 @@ class PagePlay(Page):
         self.pos_scale.set_increments(5,20)
         self.pos_scale.set_update_policy(gtk.UPDATE_DISCONTINUOUS)
         hbox2.pack_start(self.pos_scale,True,True,15)
-        vbox.add(hbox2)
+        self.vbox.add(hbox2)
 
-        return vbox
+        return self.vbox
     
     def on_volume_change(self,range):
         if self.volevent == False:

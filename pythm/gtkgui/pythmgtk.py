@@ -21,6 +21,9 @@ class PythmGtk:
         # Change FALSE to TRUE and the main window will not be destroyed
         return False
 
+    def win_redraw(self, widget, event):
+	self.window.queue_draw()
+
     def destroy(self, widget, data=None):
         print "destroy signal occurred"
         for backend in self.cfg.get_backends():
@@ -34,6 +37,7 @@ class PythmGtk:
         # create a new window
         gtk.gdk.threads_init()
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+	self.window.connect("focus-in-event", self.win_redraw)
 
 	#ptt : try to load size from config file, else go fullscreen
         self.cfg = PythmConfig()

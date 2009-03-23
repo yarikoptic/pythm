@@ -16,6 +16,7 @@ class PageList(Page):
         Page.__init__(self)
         self.cfg.get_backend().connect(Signals.PL_CHANGED,self.load_list)
         self.cfg.get_backend().connect(Signals.SONG_CHANGED,self.song_changed)
+	self.connect("focus", self.unselect_all)
         
         self.btn_up = ImageButton(gtk.STOCK_GO_UP)
         self.btnbox.add(self.btn_up)
@@ -61,11 +62,14 @@ class PageList(Page):
         self.model.foreach(self.ch_song,song)
         
     def ch_song(self,model,path,iter,song):
-        if model.get_value(iter,0)==song.id:
+        if song is not None and model.get_value(iter,0)==song.id:
 	    model.set_value(iter,4,">")
 	else:
 	    model.set_value(iter,4,"")
         
+    def unselect_all(self,dir,arg):
+        self.tv.get_selection().unselect_all()
+
     def load_list(self,pl):
         self.model.clear()
         for p in pl:

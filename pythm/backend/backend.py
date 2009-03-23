@@ -53,6 +53,9 @@ class PythmBackend(object):
         self.init_dbus()
         pass
     
+    def cb_call_status(self, id, status, props):
+        print "Phone call status changed to: " + status
+
     def init_dbus(self):
         try:
             self.sessbus = dbus.SessionBus()
@@ -65,6 +68,16 @@ class PythmBackend(object):
 	    print self.origlocktime
         except Exception, e:
             self.suspendref = None
+	    print str(e)
+	try:
+            #self.sysbus = dbus.SystemBus()
+            #self.sysbus = dbus.SessionBus()
+            self.sessbus.add_signal_receiver(self.cb_call_status,
+                dbus_interface="org.openmoko.qtopia.Phonestatus",
+                signal_name="stateChanged",
+                path="/Status",
+                bus_name="org.openmoko.qtopia.Phonestatus")
+        except Exception, e:
 	    print str(e)
 
     def startup(self,handler):

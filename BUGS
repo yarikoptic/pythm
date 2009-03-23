@@ -1,0 +1,6 @@
+    * pagelist: reordering entry, indicator '>' of playing entry is lost
+    * adding songs when playing, now it stops after last song of original list,
+      it's wrong
+    * sometimes everything goes away, continuing to work, but displayin nothing
+      (received a sms, replied, pythm then became gray at all)
+      -> added queue_draw for the window at all, to be tested

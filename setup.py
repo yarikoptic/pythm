@@ -2,7 +2,7 @@ from distutils.core import setup
 import glob
     
 setup(name='Pythm',
-        version='0.5.1-ptt7',
+        version='0.5.1-ptt9',
         description='Frontend for mplayer and mpd',
         author='Matthias Hans',
         author_email='ughl0r@yahoo.de',
@@ -17,7 +17,7 @@ setup(name='Pythm',
             'Topic :: Multimedia :: Sound :: Players',
             ],
         package_dir= {'pythm':'pythm'},
-        packages=['pythm','pythm.gtkgui','pythm.backend','pythm.mplayer','pythm.mpd'],
+        packages=['pythm','pythm.gtkgui','pythm.backend','pythm.mplayer','pythm.mpd','mutagen'],
         data_files=[('share/applications', ['data/pythm.desktop']),
                     ('/etc', ['conf/pythm.conf']),
                     ('share/pythm/', ['doc/README'])

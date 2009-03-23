@@ -139,7 +139,7 @@ class PageBackend(Page):
 	# ptt version label
 	self.versionlabel = gtk.Label()
 	self.versionlabel.set_alignment(1,1)
-	self.versionlabel.set_markup("<span size=\"x-small\">"+"0.5.1-ptt7"+"  </span>")
+	self.versionlabel.set_markup("<span size=\"x-small\">"+"0.5.1-ptt9"+"  </span>")
         vbox.pack_start(self.versionlabel,False,False,0)
         
         return vbox

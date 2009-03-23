@@ -1,10 +1,40 @@
 - pythm (0.5.1-ptt)
 	
-    ptt8:
+    ptt9:
+	gtkgui:
+	* added a queue_draw when refocusing the window
+	  (sometimes everything was vanishing)
+
+	gtkgui pagelist/pagebrowse:
+	* unselect all entries when selecting tabs
+
+    ptt8 (Mar 13, 2009):
+	* added mutagen to package creation
+
 	mutagen:
 	* removed unneeded (up 'til now) mutagen files
 
-    ptt7:
+	config:
+	* added get_boolean() method
+
+	backend/mplayerbackend:
+	* made dbus binding stuff more robust
+	* changed 'volume' command to 'pausing_keep volume'
+	* make prev goto start of song if current position > 5
+	* when prev or next go out of list, stop playing
+
+	mpdbackend:
+	* added missing args for PlaylistEntry's
+
+	gtkgui pageplay:
+	* moved redraw from title label to whole vbox <- XXX
+	* forced a volume reset to vol_scale value when changing state
+	* clean track number and lenght labels when meta_data missing
+
+	gtkgui pagelist:
+	* clean '>' when playing nothing
+
+    ptt7 (Mar 10, 2009):
 	backend/mplayerbackend:
 	* added dbus binding to manage e17 suspend time, partially taken from
 	  Dylan Maxwell Reilly implementation
@@ -17,7 +47,7 @@
 	gtkgui pagelist:
 	* clear button now removes only selected entry, when there is one
 
-    ptt6:
+    ptt6 (Mar  6, 2009):
 	* capitalized name in pythm.desktop and refined package creation
 
 	mplayerbackend:
@@ -31,7 +61,7 @@
 	* reduced volume slider's available range to (50,97) and steps to (2,4)
 	* force a redraw of title label when changing song
 
-    ptt5:
+    ptt5 (Feb 27, 2009):
 	* added mutagen to sources (mp3 id3 tags reader)
 
 	gtkgui pageplay/mplayerbackend:
@@ -39,7 +69,7 @@
 	* added track number
 	* now play() doesn't loop in itself no more
 
-    ptt4:
+    ptt4 (Feb 26, 2009):
 	mplayerbackend:
 	* decoding of mp3 id3 tags, usgin mutagen (get_meta_data)
 	* removed tag parsing (to be readded later for files w/out tags)

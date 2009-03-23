@@ -13,6 +13,7 @@ class PageBrowse(Page):
     def __init__(self):
         self.model = gtk.ListStore(object,str)
         Page.__init__(self)
+	self.connect("focus", self.unselect_all)
 
         self.btn_up = ImageButton(gtk.STOCK_GO_UP)
         self.btnbox.add(self.btn_up)
@@ -33,22 +34,6 @@ class PageBrowse(Page):
         
         self.cfg.get_backend().connect(Signals.BROWSER_CHANGED,self.browser_changed)
     
-    """
-    def adddir(self,start):
-        entry = self.get_selected_entry()
-        if entry != None:
-	    if entry.isDir:
-                self.cfg.get_backend().add_dir(entry.id)
-	    else:
-                self.cfg.get_backend().add(entry.id)
-	# else load the current dir (entry == None)
-	else:
-	    self.cfg.get_backend().add_dir(self.path)
-
-	if start:
-	    self.cfg.get_backend().play()
-	"""
-
     def btn_adddir_clicked(self,btn):
         entry = self.get_selected_entry()
         if entry != None:
@@ -75,9 +60,9 @@ class PageBrowse(Page):
         self.path = path
         self.model.clear()
         for f in list:
-	    if f.caption != '..' or self.cfg.get("pythm","showparentdir",True) == 'True':
+	    if f.caption != '..' or self.cfg.get_boolean("pythm","showparentdir","True"):
                 self.model.append([f,f.caption])
-	if self.cfg.get("pythm","showpath",False) == 'False':
+	if not self.cfg.get_boolean("pythm","showpath","False"):
             self.tv.get_column(0).set_title(os.path.basename(path).replace("_","__"))
 	else:
             self.tv.get_column(0).set_title(path.replace(self.cfg.get("mplayer","musicdir",""),"<MusicDir>").replace("_","__"))
@@ -91,6 +76,9 @@ class PageBrowse(Page):
             return self.model.get_value(iter,0)
         return None
     
+    def unselect_all(self,dir,arg):
+        self.tv.get_selection().unselect_all()
+
     def add_selected_entry(self):
         entry = self.get_selected_entry()
         if entry != None:
