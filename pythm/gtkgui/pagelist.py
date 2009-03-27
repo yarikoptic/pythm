@@ -15,6 +15,7 @@ class PageList(Page):
         self.model = gtk.ListStore(object,str,str,str,str)
         Page.__init__(self)
         self.cfg.get_backend().connect(Signals.PL_CHANGED,self.load_list)
+        self.cfg.get_backend().connect(Signals.PL_UPDATE,self.song_changed)
         self.cfg.get_backend().connect(Signals.SONG_CHANGED,self.song_changed)
 	self.connect("focus", self.unselect_all)
         
@@ -74,7 +75,7 @@ class PageList(Page):
         self.model.clear()
         for p in pl:
             self.model.append([p.id,p.artist,p.title,p.album,""])
-        
+
 #    def _row_activated_handler(self, treeview, path, col):
 #	print "handler"
 #	selected = treeview.get_selection().get_selected_rows()

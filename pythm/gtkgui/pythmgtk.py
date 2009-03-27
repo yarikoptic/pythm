@@ -48,7 +48,6 @@ class PythmGtk:
 	else:
             self.window.maximize()
 
-        #self.window.set_title(_("pythm"))
         self.window.set_title("Pythm")
 
         self.window.connect("delete_event", self.delete_event)

@@ -2,7 +2,7 @@ from distutils.core import setup
 import glob
     
 setup(name='Pythm',
-        version='0.5.1-ptt9',
+        version='0.5.1-ptt10',
         description='Frontend for mplayer and mpd',
         author='Matthias Hans',
         author_email='ughl0r@yahoo.de',

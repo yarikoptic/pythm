@@ -49,25 +49,19 @@ class MPlayer(object):
         """
         a command that does not read anything
         """
-        return self._cmd(cmd,None,False,*args)
+        return self._cmd(cmd,None,*args)
     
-    def arraycmd(self,name,key,*args):
-        """
-        array reading of mplayers output
-        """
-        return self._cmd(name,key,True,*args)
-            
     def cmd(self,name,key,*args):
         """
         single line reading with key
         """
-        return self._cmd(name,key,False,*args)
+        return self._cmd(name,key,*args)
     
     def quit(self):
         self.command("quit",0)
         self._mplayer.wait()
     
-    def _cmd(self,name,key,readall,*args):
+    def _cmd(self,name,key,*args):
         """
         key is the beginning of a line that the command waits for.
         if it is None, the read from mplayers stdout will be omitted.
@@ -77,42 +71,36 @@ class MPlayer(object):
                 ' ' if args else '',
                 ' '.join(repr(a) for a in args)
                 )       
-        return self.innercmd(cmd,key,readall)
+        return self.innercmd(cmd,key)
          
-    def innercmd(self,cmd,key,readall):
+    def innercmd(self,cmd,key):
         
-        if readall:
-            ret = []
-        else:
-            ret = None
+        ret = None
         
         self.lock.acquire()  
         i = 0      
         try:
-            #print "CMD: " + str(cmd)
+	    #print ""
+            #print "CMD : " + str(cmd)
             self._mplayer.stdin.write(cmd)
             if key != None:
-                while any(select.select([self._mplayer.stdout.fileno()], [], [], 20)):
+                #while any(select.select([self._mplayer.stdout.fileno()], [], [], 20)):
+                while any(select.select([self._mplayer.stdout.fileno()], [], [], 1)):
                     tmp = self._mplayer.stdout.readline()
-                    #print "MPLAYER:" + tmp.strip()
-                    if readall:
-                        ret.append(tmp)
-                        if tmp.startswith(key):
-                            break
-                    else:
-                        
-                        if tmp.startswith(key):
-                            val = tmp.split('=', 1)[1].rstrip()
-                            try:
-                                ret = eval(val)
-                            except:
-                                ret =  val
-                            break
+                    #print "MPLAYER: " +str(cmd).strip() + " : " + tmp.strip()
+                    if tmp.startswith(key):
+                        val = tmp.split('=', 1)[1].rstrip()
+                        try:
+                            ret = eval(val)
+                        except:
+                            ret = val
+                        break
         except Exception,e:
-            print "error in mplayer.cmd: ", e
+            print "error in mplayer.innercmd: "+str(e)
+	    ret = None
             pass
-        
         
         self.lock.release()
 
         return ret
+

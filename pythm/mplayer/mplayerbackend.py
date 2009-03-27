@@ -8,6 +8,7 @@ from threading import Thread, Lock
 from pythm.functions import is_numeric
 
 import time
+import mutagen, mutagen.id3
 
         
 class InfoRetriever(StoppableThread):
@@ -81,7 +82,7 @@ class MplayerBackend(PythmBackend):
     def play(self, plid=None):
         """Plays a song from the playlist or starts playing of plid=None"""
         if self.state == State.PAUSED:
-            #toggle pause off
+            #toggle pause
             self.mplayer.command("pause")
             self.set_state(State.PLAYING)
         else:
@@ -91,13 +92,14 @@ class MplayerBackend(PythmBackend):
                 self.current = self.entrydict[plid]
             if self.current != None:
                 entry = self.current[1]
-                self.mplayer.cmd("loadfile '" + entry.id.replace('\'', '\\\'') +"'", "======")
-		self.get_meta_data(entry.id)
-                entry.length = self.mplayer.cmd("get_time_length","ANS_LENGTH")
+                #self.mplayer.cmd("loadfile '" + entry.id.replace('\'', '\\\'') +"'", "======")
+                self.mplayer.command("loadfile '" + entry.id.replace('\'', '\\\'') +"'")
 		# tell everybody ASAP we're in playing state
                 self.set_state(State.PLAYING)
+		entry.length = None
+		while entry.length is None:
+	            entry.length = self.mplayer.cmd("get_time_length","ANS_LENGTH")
                 self.emit(Signals.SONG_CHANGED,entry)
-                #self.set_state(State.PLAYING)
             else:
                 self.set_state(State.STOPPED)
 		# XXX ptt (to signal end of list???)
@@ -133,8 +135,6 @@ class MplayerBackend(PythmBackend):
 	    # TODO implement end of songs in choose_song
 	    else:
 		self.stop()
-                #self.set_state(State.STOPPED)    
-                #self.emit(Signals.SONG_CHANGED,None)
 		
     
     def prev(self):
@@ -154,8 +154,6 @@ class MplayerBackend(PythmBackend):
 	    # TODO implement end of songs in choose_song
 	    else:
 		self.stop()
-                #self.set_state(State.STOPPED)    
-                #self.emit(Signals.SONG_CHANGED,None)
     
     def pause(self):
         """pauses playback"""
@@ -253,11 +251,9 @@ class MplayerBackend(PythmBackend):
         
         self.emit_pl_changed()
 
-	#XXX ptt song_changed is emitted a lot of times...
-	#but here i refresh '>' indicator, whould be corrected
-	#TODO refres only ref '>' status of song
+	# force refresh of '>' column
 	if self.current is not None and self.state != State.STOPPED:
-	    self.emit(Signals.SONG_CHANGED,self.current[1])
+	    self.emit(Signals.PL_UPDATE,self.current[1])
         
     def emit_pl_changed(self):
         pl = []
@@ -271,7 +267,6 @@ class MplayerBackend(PythmBackend):
 # -----get meta_data with mutagen-----------------------
 
     def get_meta_data(self, file):
-	import mutagen, mutagen.id3
         try:
 	    id3 = mutagen.id3.ID3(file, translate=False)
 	    art = id3.get('TPE1')
@@ -282,7 +277,8 @@ class MplayerBackend(PythmBackend):
 	        pic = id3.getall('APIC')
 	    else:
 	        pic = None
-        except:
+        except Exception, e:
+            print "could not read metadata: "+str(e)            
             return ("",os.path.basename(file),"",None,None)
 	
         return (art,tit,alb,trk,pic)
@@ -308,9 +304,9 @@ class MplayerBackend(PythmBackend):
             
         self.emit_pl_changed()
 
-	# to update '>' column
+	# force refresh of '>' column
 	if self.current is not None:
-            self.emit(Signals.SONG_CHANGED,self.current[1])
+            self.emit(Signals.PL_UPDATE,self.current[1])
     
     def up(self,plid):
         """moves plentry up"""
@@ -380,7 +376,7 @@ class MplayerBackend(PythmBackend):
             self.add(playing_entry.id)
         self.emit_pl_changed()
 	if playing_entry is not None:
-            self.emit(Signals.SONG_CHANGED,playing_entry)
+            self.emit(Signals.PL_UPDATE,playing_entry)
     
     def add_dir(self,dir_to_add):
         """
@@ -419,17 +415,16 @@ class MplayerBackend(PythmBackend):
                 pos = self.mplayer.cmd("get_time_pos",'ANS_TIME_POS')
                 #pos = self.mplayer.cmd("get_percent_pos",'ANS_PERCENT_POS')
                 
-                if self.current != None:
-                    length = self.current[1].length
                 if is_numeric(pos):
                     self.emit(Signals.POS_CHANGED, pos)
                 else:
-		    # TODO precache following media file
-		    #if length-15 > pos:
-		    #  	self.next(True)
-                    self.next()
-        except:
-            print "unexpected error in check_state", sys.exc_info()[0]
+                    if self.mplayer.cmd("get_property path",'ANS_path') == "(null)":
+                        self.next()
+		# TODO precache following media file ???
+		#if self.current[1].length-15 > pos:
+		#  	self.next(True)
+        except Exception,e:
+            print "error in check_state: "+str(e) 
         self.lock.release()
             
     def populate(self):

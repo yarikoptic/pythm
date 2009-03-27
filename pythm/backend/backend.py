@@ -63,21 +63,12 @@ class PythmBackend(object):
 		"org.enlightenment.wm.service",
 		"/org/enlightenment/wm/RemoteObject",
 		introspect=False)
-            self.suspendref = dbus.Interface(obj, dbus_interface="org.enlightenment.wm.IllumeConfiguration")
+            self.suspendref = dbus.Interface(
+		obj, dbus_interface="org.enlightenment.wm.IllumeConfiguration")
             self.origlocktime = self.suspendref.AutosuspendTimeoutGet()
-	    print self.origlocktime
+	    print "suspend time at startup: "+ str(self.origlocktime)
         except Exception, e:
             self.suspendref = None
-	    print str(e)
-	try:
-            #self.sysbus = dbus.SystemBus()
-            #self.sysbus = dbus.SessionBus()
-            self.sessbus.add_signal_receiver(self.cb_call_status,
-                dbus_interface="org.openmoko.qtopia.Phonestatus",
-                signal_name="stateChanged",
-                path="/Status",
-                bus_name="org.openmoko.qtopia.Phonestatus")
-        except Exception, e:
 	    print str(e)
 
     def startup(self,handler):
@@ -216,6 +207,8 @@ class Signals:
     PL_SONG_MOVED = "playlist_song_moved"
     # Signal args: plid of removed song
     PL_SONG_REMOVED = "playlist_song_removed" 
+    # Signal args: plid of playing entry
+    PL_UPDATE = "playlist_status_update"
     # Signal args: new Volume, 0-100%
     VOLUME_CHANGED = "volume_changed"
     # Signal args: new Random, boolean
@@ -312,10 +305,8 @@ class HelperThread(Thread):
                 self.lock.release()
             if cmd != None:
                 try:                        
-                    #print "executing "+cmd[0]
                     args = cmd[1]
                     getattr(self.backend,cmd[0])(*args)
-                    #print "executed "+cmd[0]
                 except Exception, e:
                     print "error executing:" + str(e)
                 finally:

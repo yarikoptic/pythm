@@ -7,7 +7,7 @@ def is_numeric(val):
     try:
         val + 1
         return True
-    except Exception,e:
+    except:
         return False
 
 def format_time(value):

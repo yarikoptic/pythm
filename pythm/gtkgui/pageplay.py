@@ -3,6 +3,7 @@ pygtk.require('2.0')
 import gtk
 import os
 import pango
+import tempfile
 
 from page import Page
 from pythm.backend import Signals,State
@@ -38,6 +39,7 @@ class PagePlay(Page):
         self.btn_next.connect("clicked", self.btn_clicked)
         
         self.volevent = False
+	self.previous_cover = None
 	
 	#ptt
         self.playimg = gtk.image_new_from_stock(gtk.STOCK_MEDIA_PLAY, gtk.ICON_SIZE_BUTTON)
@@ -74,7 +76,9 @@ class PagePlay(Page):
 	if cover is not None and len(cover) > 0:
 	    self.coverart.set_property("visible", True)
 	    #TODO is there a way to make it less heavy?
-	    self.coverart.set_from_pixbuf(self.get_cover_pix(cover[0].data))
+	    # update: now the cover is re-created only when it changes
+	    if cover != self.previous_cover:
+	        self.coverart.set_from_pixbuf(self.get_cover_pix(cover[0].data))
 	    self.talblabel.set_alignment(0, 0.5)
 	    self.trcklabel.set_alignment(0, 0.5)
 	    self.hboxtm.set_child_packing(self.timelabel,False,True,0,gtk.PACK_START)
@@ -83,6 +87,8 @@ class PagePlay(Page):
 	    self.talblabel.set_alignment(0.5, 0.5)
 	    self.trcklabel.set_alignment(0.5, 0.5)
 	    self.hboxtm.set_child_packing(self.timelabel,True,True,0,gtk.PACK_START)
+	# save previous cover
+	self.previous_cover = cover
 
     def song_changed(self,newplentry):
 	if newplentry is None:
@@ -99,53 +105,36 @@ class PagePlay(Page):
 	# queue_draw seems not to work right... ?
 	#self.songlabel.queue_draw()
 	self.songlabel.queue_resize()
-	#see below::XXX:
         self.tpe1label.set_label(str(newplentry.artist))
         self.talblabel.set_label(str(newplentry.album))
 	if newplentry.track is not None:
             self.trcklabel.set_label("(" + str(newplentry.track).replace('/', ' of ') + ")")
-	    # TODO cut away zeros, eg: xlate 01 to 1
-            #self.trcklabel.set_label("(" + str(newplentry.track).replace('/', ' of ').replace(' 0', ' ').strip() + ")")
 	else:
 	    self.trcklabel.set_label("")
         if newplentry.length > 0:
             self.pos_scale.set_range(0,newplentry.length)
+            #self.pos_changed(0)
 	    self.totaltime.set_label(" / " + format_time(int(newplentry.length)))
-	    #print newplentry.length
-	    #print format_time(int(newplentry.length))
 	else:
 	    self.totaltime.set_label("")
 
 	#load cover art
 	self.set_coverart(newplentry.cover)
 	
-	"""
-	if newplentry.cover != None and len(newplentry.cover) > 0:
-	    self.coverart.set_property("visible", True)
-	    #TODO is there a way to make it less heavy?
-	    self.coverart.set_from_pixbuf(self.get_cover_pix(newplentry.cover[0].data))
-	    self.talblabel.set_alignment(0, 0.5)
-	    self.trcklabel.set_alignment(0, 0.5)
-	    self.hboxtm.set_child_packing(self.timelabel,False,True,0,gtk.PACK_START)
-	else:
-	    self.coverart.set_property("visible", False)
-	    self.talblabel.set_alignment(0.5, 0.5)
-	    self.trcklabel.set_alignment(0.5, 0.5)
-	    self.hboxtm.set_child_packing(self.timelabel,True,True,0,gtk.PACK_START)
-	"""
-
-	#:XXX::here is below:
-	# working bad the same as above, sigh
-	#self.vbox.queue_draw()
-
         self.pos_changed(0)
 
     def get_cover_pix(self, data):
-	tmp = os.tempnam()
-	fd = open(tmp, 'wb')
-	fd.write(data)
-	fd.flush()
-	fd.close()
+	# --- old way (not secure) ---
+	#tmp = os.tempnam()
+	#fd = open(tmp, 'wb')
+	#fd.write(data)
+	#fd.flush()
+	#fd.close()
+	# --- new way: ---
+	(f, tmp) = tempfile.mkstemp()
+	os.write(f, data)
+	os.close(f)
+
 	pix = gtk.gdk.pixbuf_new_from_file_at_size(tmp, 130, 130)
 	os.remove(tmp)
 	return pix
@@ -226,7 +215,7 @@ class PagePlay(Page):
         hbox2.pack_start(gtk.Label("Pos"),False,False,0)
         self.pos_scale = gtk.HScale();
 	# ptt:
-###        self.pos_scale.set_range(0,100)
+	###self.pos_scale.set_range(0,100)
         self.pos_scale.set_draw_value(0)
         self.pos_scale.connect("value-changed",self.on_pos_change)
         self.pos_scale.set_increments(5,20)

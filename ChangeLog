@@ -1,6 +1,26 @@
 - pythm (0.5.1-ptt)
 	
-    ptt9:
+    ptt10:
+	backend:
+	* added PL_UPDATE signal to update '>' column in pagelist
+	* removed unused qtopia dbus stuff
+
+	mplayer:
+	* little code clean up
+	* removed arraycmd and related stuff
+	* reduced max timeout to wait for an answer from mplayer
+
+	mplayerbackend:
+	* little code clean up
+	* corrected behaviour of next() code
+	* force retrieving of entry.length value 
+
+	gtkgui pageplay:
+	* switched os.tempnam to tempfile.mkstemp for cover extraction
+	* reduced system load in set_coverart, now cover get reloaded only
+	  when changes
+
+    ptt9: (Mar 23, 2009)
 	gtkgui:
 	* added a queue_draw when refocusing the window
 	  (sometimes everything was vanishing)
@@ -27,9 +47,9 @@
 	* added missing args for PlaylistEntry's
 
 	gtkgui pageplay:
-	* moved redraw from title label to whole vbox <- XXX
+	* moved redraw from title label to whole vbox
 	* forced a volume reset to vol_scale value when changing state
-	* clean track number and lenght labels when meta_data missing
+	* clean track number and length labels when meta_data missing
 
 	gtkgui pagelist:
 	* clean '>' when playing nothing
